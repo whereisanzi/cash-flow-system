@@ -1,0 +1,322 @@
+services:
+  transactions-db:
+    image: postgres:16
+    container_name: transactions-db
+    environment:
+      POSTGRES_DB: transactions_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      # Configurar Unix socket para alta performance
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - transactions_data:/var/lib/postgresql/data
+      - transactions_sockets:/var/run/postgresql
+    networks:
+      transactions_network:
+        ipv4_address: 172.20.0.10
+    # Remover porta externa - apenas comunicação interna
+    expose:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  consolidations-db:
+    image: postgres:16
+    container_name: consolidations-db
+    environment:
+      POSTGRES_DB: consolidations_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      # Configurar Unix socket para alta performance
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - consolidations_data:/var/lib/postgresql/data
+      - consolidations_sockets:/var/run/postgresql
+    networks:
+      consolidations_network:
+        ipv4_address: 172.21.0.10
+    # Remover porta externa - apenas comunicação interna
+    expose:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      # RabbitMQ precisa estar em ambas as redes para comunicação inter-serviços
+      transactions_network:
+        ipv4_address: 172.20.0.20
+      consolidations_network:
+        ipv4_address: 172.21.0.20
+      messaging_network:
+        ipv4_address: 172.23.0.10
+      public_network:
+        ipv4_address: 172.22.0.20
+    ports:
+      - "15672:15672" # Management UI apenas
+    expose:
+      - "5672" # AMQP apenas interno
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Transactions API - Instância 1
+  transactions-api-1:
+    build:
+      context: ./src/TransactionsApi
+      dockerfile: Dockerfile
+    container_name: transactions-api-1
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+      # Conexão via Unix socket para máxima performance
+      ConnectionStrings__DefaultConnection: "Host=/var/run/postgresql;Database=transactions_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__RabbitMQ: "172.20.0.20"
+    volumes:
+      - transactions_sockets:/var/run/postgresql
+    networks:
+      transactions_network:
+        ipv4_address: 172.20.0.30
+      public_network:
+        ipv4_address: 172.22.0.30
+    expose:
+      - "5001"
+    depends_on:
+      transactions-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  # Transactions API - Instância 2 (Load Balancing)
+  transactions-api-2:
+    build:
+      context: ./src/TransactionsApi
+      dockerfile: Dockerfile
+    container_name: transactions-api-2
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5001
+      # Conexão via Unix socket para máxima performance
+      ConnectionStrings__DefaultConnection: "Host=/var/run/postgresql;Database=transactions_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__RabbitMQ: "172.20.0.20"
+    volumes:
+      - transactions_sockets:/var/run/postgresql
+    networks:
+      transactions_network:
+        ipv4_address: 172.20.0.31
+      public_network:
+        ipv4_address: 172.22.0.31
+    expose:
+      - "5001"
+    depends_on:
+      transactions-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  # Consolidations API - Instância 1
+  consolidations-api-1:
+    build:
+      context: ./src/ConsolidationsApi
+      dockerfile: Dockerfile
+    container_name: consolidations-api-1
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5002
+      # Conexão via Unix socket para máxima performance
+      ConnectionStrings__DefaultConnection: "Host=/var/run/postgresql;Database=consolidations_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__RabbitMQ: "172.21.0.20"
+    volumes:
+      - consolidations_sockets:/var/run/postgresql
+    networks:
+      consolidations_network:
+        ipv4_address: 172.21.0.30
+      public_network:
+        ipv4_address: 172.22.0.40
+    expose:
+      - "5002"
+    depends_on:
+      consolidations-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  # Consolidations API - Instância 2 (Load Balancing)
+  consolidations-api-2:
+    build:
+      context: ./src/ConsolidationsApi
+      dockerfile: Dockerfile
+    container_name: consolidations-api-2
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5002
+      # Conexão via Unix socket para máxima performance
+      ConnectionStrings__DefaultConnection: "Host=/var/run/postgresql;Database=consolidations_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__RabbitMQ: "172.21.0.20"
+    volumes:
+      - consolidations_sockets:/var/run/postgresql
+    networks:
+      consolidations_network:
+        ipv4_address: 172.21.0.31
+      public_network:
+        ipv4_address: 172.22.0.41
+    expose:
+      - "5002"
+    depends_on:
+      consolidations-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    restart: on-failure
+
+  # HAProxy - Load Balancer
+  haproxy:
+    image: haproxy:2.8-alpine
+    container_name: haproxy
+    volumes:
+      - ./config/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    networks:
+      public_network:
+        ipv4_address: 172.22.0.50
+    ports:
+      - "8081:8081" # HAProxy Stats
+    expose:
+      - "8080"
+    depends_on:
+      - transactions-api-1
+      - transactions-api-2
+      - consolidations-api-1
+      - consolidations-api-2
+    restart: on-failure
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://127.0.0.1:8081/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Keycloak - Identity and Access Management
+  keycloak:
+    image: quay.io/keycloak/keycloak:22.0
+    container_name: keycloak
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin123
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak123
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME: "localhost"
+      KC_HOSTNAME_PORT: 8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+    volumes:
+      - ./config/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+    ports:
+      - "8080:8080" # Keycloak Admin Console
+    networks:
+      public_network:
+        ipv4_address: 172.22.0.70
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    restart: on-failure
+    command:
+      - start-dev
+      - --import-realm
+
+  # Keycloak Database
+  keycloak-db:
+    image: postgres:16
+    container_name: keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak123
+    volumes:
+      - keycloak_data:/var/lib/postgresql/data
+    networks:
+      public_network:
+        ipv4_address: 172.22.0.71
+    expose:
+      - "5432"
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # KrakenD - API Gateway
+  krakend:
+    image: devopsfaith/krakend:2.6
+    container_name: krakend
+    volumes:
+      - ./config/krakend/krakend.json:/etc/krakend/krakend.json:ro
+    ports:
+      - "8000:8080" # Gateway público
+      - "8090:8090" # Métricas
+    networks:
+      public_network:
+        ipv4_address: 172.22.0.60
+    depends_on:
+      - haproxy
+      - keycloak
+    restart: on-failure
+    command: [ "run", "-c", "/etc/krakend/krakend.json" ]
+
+volumes:
+  transactions_data:
+  consolidations_data:
+  rabbitmq_data:
+  keycloak_data: # Unix sockets para comunicação de alta performance
+
+  transactions_sockets:
+  consolidations_sockets:
+
+
+networks:
+  # Rede dedicada para Transactions (API + DB)
+  transactions_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+  # Rede dedicada para Consolidations (API + DB)
+  consolidations_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.21.0.0/16
+
+  # Rede pública para Gateway e Load Balancer
+  public_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.22.0.0/16
+
+  # Rede para RabbitMQ (bridge entre serviços)
+  messaging_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.23.0.0/16

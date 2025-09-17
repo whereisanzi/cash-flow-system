@@ -1,0 +1,150 @@
+{
+  "$schema": "https://www.krakend.io/schema/v3.json",
+  "version": 3,
+  "name": "Cash Flow System API Gateway",
+  "timeout": "3000ms",
+  "cache_ttl": "300s",
+  "output_encoding": "json",
+  "port": 8080,
+  "host": [
+    "http://172.22.0.50:8080"
+  ],
+  "extra_config": {
+    "security/cors": {
+      "allow_origins": [
+        "*"
+      ],
+      "allow_methods": [
+        "GET",
+        "HEAD",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ],
+      "expose_headers": [
+        "Authorization",
+        "Content-Type"
+      ],
+      "allow_headers": [
+        "Authorization",
+        "Content-Type"
+      ],
+      "max_age": "12h",
+      "allow_credentials": true,
+      "debug": true
+    },
+    "telemetry/metrics": {
+      "collection_time": "60s",
+      "proxy_disabled": false,
+      "router_disabled": false,
+      "backend_disabled": false,
+      "endpoint_disabled": false,
+      "listen_address": ":8090"
+    }
+  },
+  "endpoints": [
+    {
+      "endpoint": "/api/v1/auth/token",
+      "method": "POST",
+      "timeout": "3000ms",
+      "backend": [
+        {
+          "url_pattern": "/realms/cash-flow/protocol/openid-connect/token",
+          "method": "POST",
+          "host": [
+            "http://172.22.0.70:8080"
+          ],
+          "extra_config": {
+            "backend/http": {
+              "return_error_details": "backend_alias"
+            }
+          }
+        }
+      ],
+      "extra_config": {
+        "qos/ratelimit/router": {
+          "max_rate": 50,
+          "capacity": 50
+        }
+      }
+    },
+    {
+      "endpoint": "/api/v1/merchants/{merchant_id}/transactions",
+      "method": "POST",
+      "timeout": "3000ms",
+      "input_headers": [
+        "Authorization",
+        "Content-Type"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "operation_debug": true,
+          "alg": "RS256",
+          "jwk_url": "http://172.22.0.70:8080/realms/cash-flow/protocol/openid-connect/certs",
+          "disable_jwk_security": true
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 100,
+          "capacity": 100
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/merchants/{merchant_id}/transactions",
+          "method": "POST",
+          "host": [
+            "http://172.22.0.50:8080"
+          ]
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/v1/merchants/{merchant_id}/consolidations/daily",
+      "method": "GET",
+      "timeout": "3000ms",
+      "input_query_strings": [
+        "date"
+      ],
+      "input_headers": [
+        "Authorization"
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "operation_debug": true,
+          "alg": "RS256",
+          "jwk_url": "http://172.22.0.70:8080/realms/cash-flow/protocol/openid-connect/certs",
+          "disable_jwk_security": true
+        },
+        "qos/ratelimit/router": {
+          "max_rate": 200,
+          "capacity": 200
+        }
+      },
+      "backend": [
+        {
+          "url_pattern": "/api/v1/merchants/{merchant_id}/consolidations/daily",
+          "method": "GET",
+          "host": [
+            "http://172.22.0.50:8080"
+          ],
+          "disable_host_sanitize": true
+        }
+      ]
+    },
+    {
+      "endpoint": "/health",
+      "method": "GET",
+      "timeout": "1000ms",
+      "backend": [
+        {
+          "url_pattern": "/health",
+          "method": "GET",
+          "host": [
+            "http://172.22.0.50:8080"
+          ]
+        }
+      ]
+    }
+  ]
+}
