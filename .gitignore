@@ -5,6 +5,10 @@ out/
 *.user
 *.userosscache
 *.sln.docstates
+src/*/bin/
+src/*/obj/
+test/*/bin/
+test/*/obj/
 
 # User-specific files
 *.rsuser
