@@ -82,10 +82,10 @@ public class ConsolidationServiceTests
             .ReturnsAsync((DailyConsolidation?)null);
 
         _mockRepository.Setup(r => r.CreateOrUpdateAsync(It.IsAny<DailyConsolidation>()))
-            .Returns<DailyConsolidation>(async consolidation => consolidation);
+            .Returns<DailyConsolidation>(consolidation => Task.FromResult(consolidation));
 
         // Act
-        await _service.UpdateConsolidationFromTransactionAsync(merchantId, "CREDITO", 150m, transactionDate);
+        await _service.UpdateConsolidationFromTransactionAsync(merchantId, TransactionType.CREDITO, 150m, transactionDate);
 
         // Assert
         _mockRepository.Verify(r => r.CreateOrUpdateAsync(It.Is<DailyConsolidation>(c =>
@@ -121,10 +121,10 @@ public class ConsolidationServiceTests
             .ReturnsAsync(existingConsolidation);
 
         _mockRepository.Setup(r => r.CreateOrUpdateAsync(It.IsAny<DailyConsolidation>()))
-            .Returns<DailyConsolidation>(async consolidation => consolidation);
+            .Returns<DailyConsolidation>(consolidation => Task.FromResult(consolidation));
 
         // Act
-        await _service.UpdateConsolidationFromTransactionAsync(merchantId, "DEBITO", 75m, transactionDate);
+        await _service.UpdateConsolidationFromTransactionAsync(merchantId, TransactionType.DEBITO, 75m, transactionDate);
 
         // Assert
         _mockRepository.Verify(r => r.CreateOrUpdateAsync(It.Is<DailyConsolidation>(c =>
@@ -138,10 +138,10 @@ public class ConsolidationServiceTests
     }
 
     [Theory]
-    [InlineData("DEBITO", 50m, 50m, 0m, -50m)]
-    [InlineData("CREDITO", 75m, 0m, 75m, 75m)]
+    [InlineData(TransactionType.DEBITO, 50.0, 50.0, 0.0, -50.0)]
+    [InlineData(TransactionType.CREDITO, 75.0, 0.0, 75.0, 75.0)]
     public async Task UpdateConsolidationFromTransactionAsync_ShouldHandleDifferentTransactionTypes(
-        string transactionType, decimal amount, decimal expectedDebits, decimal expectedCredits, decimal expectedBalance)
+        TransactionType transactionType, double amount, double expectedDebits, double expectedCredits, double expectedBalance)
     {
         // Arrange
         var merchantId = "merchant-test";
@@ -152,16 +152,16 @@ public class ConsolidationServiceTests
             .ReturnsAsync((DailyConsolidation?)null);
 
         _mockRepository.Setup(r => r.CreateOrUpdateAsync(It.IsAny<DailyConsolidation>()))
-            .Returns<DailyConsolidation>(async consolidation => consolidation);
+            .Returns<DailyConsolidation>(consolidation => Task.FromResult(consolidation));
 
         // Act
-        await _service.UpdateConsolidationFromTransactionAsync(merchantId, transactionType, amount, transactionDate);
+        await _service.UpdateConsolidationFromTransactionAsync(merchantId, transactionType, (decimal)amount, transactionDate);
 
         // Assert
         _mockRepository.Verify(r => r.CreateOrUpdateAsync(It.Is<DailyConsolidation>(c =>
-            c.TotalDebits == expectedDebits &&
-            c.TotalCredits == expectedCredits &&
-            c.NetBalance == expectedBalance &&
+            c.TotalDebits == (decimal)expectedDebits &&
+            c.TotalCredits == (decimal)expectedCredits &&
+            c.NetBalance == (decimal)expectedBalance &&
             c.TransactionCount == 1
         )), Times.Once);
     }

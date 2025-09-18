@@ -1,18 +1,29 @@
-using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using TransactionsApi.Data;
-using TransactionsApi.DTOs;
-using TransactionsApi.Repositories;
-using TransactionsApi.Services;
+using TransactionsApi.Models.Data;
+using TransactionsApi.Protocols.Database;
+using TransactionsApi.Protocols.Queue;
+using FluentMigrator.Runner;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<TransactionsDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
-builder.Services.AddScoped<ITransactionService, TransactionService>();
-builder.Services.AddSingleton<IEventPublisher, RabbitMQEventPublisher>();
+
+builder.Services.AddScoped<IDatabaseProtocol>(provider =>
+  new PostgreSQLDatabaseProtocol(builder.Configuration.GetConnectionString("DefaultConnection")!));
+builder.Services.AddScoped<IQueueProtocol>(provider =>
+  new RabbitMQQueueProtocol(builder.Configuration.GetConnectionString("RabbitMQ")!));
+builder.Services.AddScoped<IMigrationProtocol, FluentMigratorProtocol>();
+
+builder.Services.AddScoped<IDatabaseGateway, DatabaseGateway>();
+builder.Services.AddScoped<IQueueGateway, QueueGateway>();
+builder.Services.AddScoped<ITransactionAdapter, TransactionAdapter>();
+builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
+
+builder.Services.AddFluentMigratorCore()
+    .ConfigureRunner(rb => rb
+        .AddPostgres()
+        .WithGlobalConnectionString(builder.Configuration.GetConnectionString("DefaultConnection"))
+        .ScanIn(typeof(Program).Assembly).For.Migrations())
+    .AddLogging(lb => lb.AddFluentMigratorConsole());
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -25,20 +36,11 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-// Aplicar migrations automaticamente
+// Aplicar FluentMigrator migrations automaticamente
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<TransactionsDbContext>();
-    try
-    {
-        context.Database.Migrate();
-    }
-    catch (InvalidOperationException ex) when (ex.Message.Contains("PendingModelChangesWarning"))
-    {
-        // Se há mudanças pendentes no modelo, criar/recriar o banco
-        context.Database.EnsureDeleted();
-        context.Database.EnsureCreated();
-    }
+    var migrationProtocol = scope.ServiceProvider.GetRequiredService<IMigrationProtocol>();
+    await migrationProtocol.MigrateUpAsync();
 }
 
 if (app.Environment.IsDevelopment())
@@ -47,37 +49,15 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.MapPost("/api/v1/merchants/{merchantId}/transactions", async (
-    string merchantId,
-    CreateTransactionRequest request,
-    ITransactionService transactionService) =>
-{
-    if (string.IsNullOrWhiteSpace(merchantId))
-        return Results.BadRequest("MerchantId is required");
 
-    var validationResults = new List<ValidationResult>();
-    var validationContext = new ValidationContext(request);
 
-    if (!Validator.TryValidateObject(request, validationContext, validationResults, true))
-    {
-        var errors = validationResults.Select(vr => vr.ErrorMessage).ToList();
-        return Results.BadRequest(new { Errors = errors });
-    }
-
-    try
-    {
-        var result = await transactionService.CreateTransactionAsync(merchantId, request);
-        return Results.Created($"/api/v1/transactions/{result.Id}", result);
-    }
-    catch (Exception ex)
-    {
-        return Results.Problem($"An error occurred: {ex.Message}");
-    }
-})
+app
+.MapPost("/api/v1/merchants/{merchantId}/transactions", TransactionHandler.CreateTransaction)
 .WithName("CreateTransaction")
 .WithOpenApi();
 
-app.MapGet("/health", () => Results.Ok(new { Status = "Healthy", Service = "TransactionsApi" }))
+app
+.MapGet("/health", TransactionHandler.HealthCheck)
 .WithName("HealthCheck")
 .WithOpenApi();
 
