@@ -18,7 +18,7 @@ public class DatabaseGateway : IDatabaseGateway
   public async Task<Transaction> SaveTransactionAsync(Transaction transaction)
   {
     const string sql = @"
-      INSERT INTO Transactions (Id, MerchantId, Type, Amount, DateTime, Description, CreatedAt)
+      INSERT INTO ""Transactions"" (""Id"", ""MerchantId"", ""Type"", ""Amount"", ""DateTime"", ""Description"", ""CreatedAt"")
       VALUES (@Id, @MerchantId, @Type, @Amount, @DateTime, @Description, @CreatedAt)
       RETURNING *";
 

@@ -6,10 +6,10 @@
   "cache_ttl": "300s",
   "output_encoding": "json",
   "port": 8080,
-  "host": [
-    "http://172.22.0.50:8080"
-  ],
   "extra_config": {
+    "router": {
+      "health_path": "/health"
+    },
     "security/cors": {
       "allow_origins": [
         "*"
@@ -48,6 +48,7 @@
       "endpoint": "/api/v1/auth/token",
       "method": "POST",
       "timeout": "3000ms",
+      "output_encoding": "no-op",
       "backend": [
         {
           "url_pattern": "/realms/cash-flow/protocol/openid-connect/token",
@@ -94,7 +95,7 @@
           "url_pattern": "/api/v1/merchants/{merchant_id}/transactions",
           "method": "POST",
           "host": [
-            "http://172.22.0.50:8080"
+            "http://172.22.0.51:8080"
           ]
         }
       ]
@@ -126,23 +127,9 @@
           "url_pattern": "/api/v1/merchants/{merchant_id}/consolidations/daily",
           "method": "GET",
           "host": [
-            "http://172.22.0.50:8080"
+            "http://172.22.0.52:8080"
           ],
           "disable_host_sanitize": true
-        }
-      ]
-    },
-    {
-      "endpoint": "/health",
-      "method": "GET",
-      "timeout": "1000ms",
-      "backend": [
-        {
-          "url_pattern": "/health",
-          "method": "GET",
-          "host": [
-            "http://172.22.0.50:8080"
-          ]
         }
       ]
     }

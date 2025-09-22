@@ -10,7 +10,8 @@ YELLOW = \033[0;33m
 RED = \033[0;31m
 NC = \033[0m # No Color
 
-.PHONY: help build up down restart logs clean test status generate-migrations
+.PHONY: help build up down restart logs clean test status generate-migrations \
+        k6-up-deps k6-run k6-run-host k6-all k6-summary
 
 # Comando padrão
 all: help
@@ -32,10 +33,18 @@ help:
 	@echo "  make status         - Mostra status dos containers"
 	@echo "  make generate-migrations - Gera novas migrations do Entity Framework"
 	@echo "  make test           - Executa testes unitários"
-	@echo "  make clean          - Remove volumes e limpa o ambiente"
+	@echo "  make clean          - Limpeza completa do ambiente Docker"
+	@echo "  make reset          - Reset completo (clean + build + up)"
 	@echo "  make dev-infra      - Inicia apenas infraestrutura (DBs + RabbitMQ)"
 	@echo "  make dev-apis       - Inicia apenas as APIs"
 	@echo "  make health         - Verifica saúde dos serviços"
+	@echo ""
+	@echo "$(YELLOW)Load Testing (k6 via Docker):$(NC)"
+	@echo "  make load-test-comprehensive - Stress test completo (30+ min)"
+	@echo "  make load-test-performance  - Monitoramento de performance (15 min)"
+	@echo "  make load-test-chaos        - Chaos testing (20 min) - CUIDADO!"
+	@echo "  make load-test-all          - Suíte completa de testes"
+	@echo "  make load-test-health       - Verifica saúde antes dos testes"
 	@echo ""
 
 # Construir imagens
@@ -121,10 +130,22 @@ test:
 
 # Limpar ambiente
 clean: down
-	@echo "$(RED)🧹 Limpando volumes e imagens...$(NC)"
-	$(DOCKER_COMPOSE) down -v --remove-orphans
-	@docker system prune -f
-	@echo "$(GREEN)✅ Ambiente limpo!$(NC)"
+	@echo "$(RED)🧹 Limpeza completa do ambiente...$(NC)"
+	@echo "$(YELLOW)Parando e removendo containers...$(NC)"
+	$(DOCKER_COMPOSE) down -v --remove-orphans --rmi local
+	@echo "$(YELLOW)Removendo volumes órfãos...$(NC)"
+	@docker volume prune -f
+	@echo "$(YELLOW)Removendo imagens não utilizadas...$(NC)"
+	@docker image prune -f
+	@echo "$(YELLOW)Limpeza geral do sistema Docker...$(NC)"
+	@docker system prune -f --volumes
+	@echo "$(YELLOW)Removendo networks órfãos...$(NC)"
+	@docker network prune -f
+	@echo "$(GREEN)✅ Ambiente completamente limpo!$(NC)"
+
+# Reset completo do ambiente
+reset: clean build up
+	@echo "$(GREEN)🔄 Reset completo concluído!$(NC)"
 
 # Desenvolvimento - apenas infraestrutura
 dev-infra:
@@ -213,3 +234,87 @@ load-test:
 			-d '{"type": "CREDITO", "amount": '$$i'0.00, "description": "Load test $$i"}' & \
 	done; wait
 	@echo "$(GREEN)✅ Teste de carga concluído!$(NC)"
+
+# ==============================
+# k6 Load Testing Suite
+# ==============================
+
+# Environment configuration
+K6_BASE_URL ?= http://krakend:8080
+K6_USERNAME ?= merchant1
+K6_PASSWORD ?= merchant123
+K6_CLIENT_ID ?= cash-flow-api
+K6_CLIENT_SECRET ?= cash-flow-secret-2024
+K6_MERCHANT_A ?= merchant-001
+K6_MERCHANT_B ?= merchant-002
+K6_MERCHANT_C ?= merchant-003
+K6_DATE ?= 2025-09-20
+K6_OUTPUT_DIR ?= ./tests/k6/results
+
+# Load test targets
+load-test-comprehensive:
+	@echo "$(GREEN)💪 Comprehensive Stress Test (30+ min)$(NC)"
+	@mkdir -p $(K6_OUTPUT_DIR)
+	@docker run --rm -i --network host \
+	  -e K6_BASE_URL=http://localhost:8000 \
+	  -e K6_USERNAME=$(K6_USERNAME) \
+	  -e K6_PASSWORD=$(K6_PASSWORD) \
+	  -e K6_CLIENT_ID=$(K6_CLIENT_ID) \
+	  -e K6_CLIENT_SECRET=$(K6_CLIENT_SECRET) \
+	  -e K6_MERCHANT_A=$(K6_MERCHANT_A) \
+	  -e K6_MERCHANT_B=$(K6_MERCHANT_B) \
+	  -e K6_MERCHANT_C=$(K6_MERCHANT_C) \
+	  -v $(PWD)/tests/k6:/scripts \
+	  -v $(PWD)/$(K6_OUTPUT_DIR):/results \
+	  grafana/k6:latest run \
+	  --out json=/results/comprehensive-$(shell date +%Y%m%d_%H%M%S).json \
+	  /scripts/stress-comprehensive.js
+
+load-test-performance:
+	@echo "$(GREEN)📊 Performance Monitoring (15 min)$(NC)"
+	@mkdir -p $(K6_OUTPUT_DIR)
+	@docker run --rm -i --network host \
+	  -e K6_BASE_URL=http://localhost:8000 \
+	  -e K6_USERNAME=$(K6_USERNAME) \
+	  -e K6_PASSWORD=$(K6_PASSWORD) \
+	  -e K6_CLIENT_ID=$(K6_CLIENT_ID) \
+	  -e K6_CLIENT_SECRET=$(K6_CLIENT_SECRET) \
+	  -v $(PWD)/tests/k6:/scripts \
+	  -v $(PWD)/$(K6_OUTPUT_DIR):/results \
+	  grafana/k6:latest run \
+	  --out json=/results/performance-$(shell date +%Y%m%d_%H%M%S).json \
+	  /scripts/performance-monitoring.js
+
+load-test-chaos:
+	@echo "$(RED)🔥 Chaos Testing (20 min) - CUIDADO!$(NC)"
+	@echo "$(YELLOW)⚠️  Este teste pode causar instabilidade no sistema$(NC)"
+	@read -p "Continuar? (y/N) " confirm && [ "$$confirm" = "y" ] || exit 1
+	@mkdir -p $(K6_OUTPUT_DIR)
+	@docker run --rm -i --network host \
+	  -e K6_BASE_URL=http://localhost:8000 \
+	  -e K6_USERNAME=$(K6_USERNAME) \
+	  -e K6_PASSWORD=$(K6_PASSWORD) \
+	  -e K6_CLIENT_ID=$(K6_CLIENT_ID) \
+	  -e K6_CLIENT_SECRET=$(K6_CLIENT_SECRET) \
+	  -v $(PWD)/tests/k6:/scripts \
+	  -v $(PWD)/$(K6_OUTPUT_DIR):/results \
+	  grafana/k6:latest run \
+	  --out json=/results/chaos-$(shell date +%Y%m%d_%H%M%S).json \
+	  /scripts/chaos-testing.js
+
+# Health check before load tests
+load-test-health:
+	@echo "$(BLUE)🔍 Checking system health...$(NC)"
+	@curl -f http://localhost:8000/health || (echo "$(RED)❌ System not healthy$(NC)" && exit 1)
+	@echo "$(GREEN)✅ System healthy$(NC)"
+
+# Complete test suite
+load-test-all: load-test-health
+	@echo "$(YELLOW)🚀 Running complete load test suite$(NC)"
+	@$(MAKE) load-test-performance
+	@sleep 60
+	@$(MAKE) load-test-comprehensive
+	@sleep 120
+	@$(MAKE) load-test-chaos
+	@echo "$(GREEN)🎉 All load tests completed!$(NC)"
+	@echo "$(BLUE)Results in: $(K6_OUTPUT_DIR)$(NC)"

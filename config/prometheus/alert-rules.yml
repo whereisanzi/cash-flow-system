@@ -1,0 +1,259 @@
+groups:
+  - name: cash_flow_system_slo_alerts
+    rules:
+      # Transaction API SLO Violations
+      - alert: TransactionAPIAvailabilityViolation
+        expr: (sum(rate(http_requests_total{job="transactions-api", code!~"5.."}[5m])) / sum(rate(http_requests_total{job="transactions-api"}[5m]))) * 100 < 99.9
+        for: 2m
+        labels:
+          severity: critical
+          service: transactions-api
+          slo: availability
+        annotations:
+          summary: "Transaction API availability below SLO"
+          description: "Transaction API availability is {{ $value }}%, below the 99.9% SLO threshold"
+          runbook_url: "https://docs.company.com/runbooks/transaction-api-availability"
+
+      - alert: TransactionAPILatencyViolation
+        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="transactions-api"}[5m])) by (le)) * 1000 > 500
+        for: 5m
+        labels:
+          severity: critical
+          service: transactions-api
+          slo: latency
+        annotations:
+          summary: "Transaction API P95 latency above SLO"
+          description: "Transaction API P95 latency is {{ $value }}ms, above the 500ms SLO threshold"
+          runbook_url: "https://docs.company.com/runbooks/transaction-api-latency"
+
+      - alert: TransactionAPIHighLatency
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="transactions-api"}[5m])) by (le)) * 1000 > 1000
+        for: 3m
+        labels:
+          severity: critical
+          service: transactions-api
+          slo: latency
+        annotations:
+          summary: "Transaction API P99 latency above SLO"
+          description: "Transaction API P99 latency is {{ $value }}ms, above the 1000ms SLO threshold"
+          runbook_url: "https://docs.company.com/runbooks/transaction-api-latency"
+
+      # Consolidations API SLO Violations
+      - alert: ConsolidationsAPISuccessRateViolation
+        expr: (sum(rate(http_requests_total{job="consolidations-api", code!~"5.."}[5m])) / sum(rate(http_requests_total{job="consolidations-api"}[5m]))) * 100 < 95
+        for: 2m
+        labels:
+          severity: warning
+          service: consolidations-api
+          slo: success_rate
+        annotations:
+          summary: "Consolidations API success rate below SLO"
+          description: "Consolidations API success rate is {{ $value }}%, below the 95% SLO threshold"
+          runbook_url: "https://docs.company.com/runbooks/consolidations-api-success-rate"
+
+      - alert: ConsolidationsAPIThroughputViolation
+        expr: sum(rate(http_requests_total{job="consolidations-api"}[5m])) > 50
+        for: 1m
+        labels:
+          severity: warning
+          service: consolidations-api
+          slo: throughput
+        annotations:
+          summary: "Consolidations API exceeding throughput SLO"
+          description: "Consolidations API is handling {{ $value }} RPS, above the 50 RPS SLO threshold"
+          runbook_url: "https://docs.company.com/runbooks/consolidations-api-throughput"
+
+      # Overall System Error Rate
+      - alert: SystemErrorRateViolation
+        expr: (sum(rate(http_requests_total{code=~"4..|5.."}[5m])) / sum(rate(http_requests_total[5m]))) * 100 > 5
+        for: 3m
+        labels:
+          severity: critical
+          service: system
+          slo: error_rate
+        annotations:
+          summary: "System error rate above SLO"
+          description: "System error rate is {{ $value }}%, above the 5% SLO threshold"
+          runbook_url: "https://docs.company.com/runbooks/system-error-rate"
+
+  - name: cash_flow_system_infrastructure_alerts
+    rules:
+      # Database Connection Pool Alerts
+      - alert: DatabaseConnectionPoolHigh
+        expr: (database_connections_active / database_connections_max) * 100 > 90
+        for: 2m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool utilization high"
+          description: "Database {{ $labels.database }} connection pool is {{ $value }}% utilized"
+          runbook_url: "https://docs.company.com/runbooks/database-connections"
+
+      - alert: DatabaseConnectionPoolWarning
+        expr: (database_connections_active / database_connections_max) * 100 > 70
+        for: 5m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection pool utilization warning"
+          description: "Database {{ $labels.database }} connection pool is {{ $value }}% utilized"
+          runbook_url: "https://docs.company.com/runbooks/database-connections"
+
+      # RabbitMQ Queue Alerts
+      - alert: RabbitMQQueueBacklog
+        expr: rabbitmq_queue_messages{queue="transaction_events"} > 500
+        for: 2m
+        labels:
+          severity: critical
+          component: rabbitmq
+        annotations:
+          summary: "RabbitMQ queue backlog critical"
+          description: "RabbitMQ queue {{ $labels.queue }} has {{ $value }} messages pending"
+          runbook_url: "https://docs.company.com/runbooks/rabbitmq-backlog"
+
+      - alert: RabbitMQQueueBacklogWarning
+        expr: rabbitmq_queue_messages{queue="transaction_events"} > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: rabbitmq
+        annotations:
+          summary: "RabbitMQ queue backlog warning"
+          description: "RabbitMQ queue {{ $labels.queue }} has {{ $value }} messages pending"
+          runbook_url: "https://docs.company.com/runbooks/rabbitmq-backlog"
+
+      # Container Resource Alerts
+      - alert: ContainerHighMemoryUsage
+        expr: (container_memory_usage_bytes{name=~"transactions-api|consolidations-api"} / container_spec_memory_limit_bytes{name=~"transactions-api|consolidations-api"}) * 100 > 85
+        for: 3m
+        labels:
+          severity: critical
+          component: container
+        annotations:
+          summary: "Container memory usage critical"
+          description: "Container {{ $labels.name }} memory usage is {{ $value }}%"
+          runbook_url: "https://docs.company.com/runbooks/container-resources"
+
+      - alert: ContainerHighCPUUsage
+        expr: rate(container_cpu_usage_seconds_total{name=~"transactions-api|consolidations-api"}[5m]) * 100 > 85
+        for: 3m
+        labels:
+          severity: warning
+          component: container
+        annotations:
+          summary: "Container CPU usage high"
+          description: "Container {{ $labels.name }} CPU usage is {{ $value }}%"
+          runbook_url: "https://docs.company.com/runbooks/container-resources"
+
+      # Service Health Alerts
+      - alert: ServiceDown
+        expr: up{job=~"transactions-api|consolidations-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          component: service
+        annotations:
+          summary: "Service is down"
+          description: "Service {{ $labels.job }} is down"
+          runbook_url: "https://docs.company.com/runbooks/service-down"
+
+  - name: cash_flow_system_business_alerts
+    rules:
+      # Business Logic Alerts
+      - alert: LowTransactionVolume
+        expr: sum(rate(transactions_total[5m])) < 0.1
+        for: 10m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "Transaction volume unexpectedly low"
+          description: "Transaction rate is {{ $value }} transactions/sec, which is unusually low"
+          runbook_url: "https://docs.company.com/runbooks/low-transaction-volume"
+
+      - alert: HighTransactionVolume
+        expr: sum(rate(transactions_total[5m])) > 100
+        for: 2m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "Transaction volume unexpectedly high"
+          description: "Transaction rate is {{ $value }} transactions/sec, which is unusually high"
+          runbook_url: "https://docs.company.com/runbooks/high-transaction-volume"
+
+      - alert: ConsolidationReportFailure
+        expr: increase(consolidation_reports_failed_total[1h]) > 5
+        for: 1m
+        labels:
+          severity: critical
+          component: business
+        annotations:
+          summary: "Multiple consolidation report failures"
+          description: "{{ $value }} consolidation reports have failed in the last hour"
+          runbook_url: "https://docs.company.com/runbooks/consolidation-failures"
+
+      - alert: NegativeCashFlow
+        expr: sum(rate(transaction_amount_total{transaction_type="credit"}[1h])) - sum(rate(transaction_amount_total{transaction_type="debit"}[1h])) < -10000
+        for: 15m
+        labels:
+          severity: warning
+          component: business
+        annotations:
+          summary: "Negative cash flow detected"
+          description: "Net cash flow is ${{ $value }} (negative), indicating more debits than credits"
+          runbook_url: "https://docs.company.com/runbooks/negative-cash-flow"
+
+  - name: cash_flow_system_error_budget_alerts
+    rules:
+      # Error Budget Burn Rate Alerts
+      - alert: TransactionAPIErrorBudgetBurnRateHigh
+        expr: (1 - (sum(rate(http_requests_total{job="transactions-api", code!~"5.."}[1h])) / sum(rate(http_requests_total{job="transactions-api"}[1h])))) / 0.001 > 10
+        for: 5m
+        labels:
+          severity: critical
+          service: transactions-api
+          component: error_budget
+        annotations:
+          summary: "Transaction API error budget burning fast"
+          description: "Transaction API error budget is burning at {{ $value }}x the acceptable rate"
+          runbook_url: "https://docs.company.com/runbooks/error-budget-burn"
+
+      - alert: ConsolidationsAPIErrorBudgetBurnRateHigh
+        expr: (1 - (sum(rate(http_requests_total{job="consolidations-api", code!~"5.."}[1h])) / sum(rate(http_requests_total{job="consolidations-api"}[1h])))) / 0.05 > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: consolidations-api
+          component: error_budget
+        annotations:
+          summary: "Consolidations API error budget burning fast"
+          description: "Consolidations API error budget is burning at {{ $value }}x the acceptable rate"
+          runbook_url: "https://docs.company.com/runbooks/error-budget-burn"
+
+  - name: cash_flow_system_data_alerts
+    rules:
+      # Database Performance Alerts
+      - alert: DatabaseQueryLatencyHigh
+        expr: histogram_quantile(0.95, sum(rate(database_query_duration_seconds_bucket[5m])) by (le, database)) * 1000 > 1000
+        for: 3m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database query latency high"
+          description: "Database {{ $labels.database }} P95 query latency is {{ $value }}ms"
+          runbook_url: "https://docs.company.com/runbooks/database-performance"
+
+      - alert: DatabaseConnectionsExhausted
+        expr: database_connections_active >= database_connections_max
+        for: 30s
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connections exhausted"
+          description: "Database {{ $labels.database }} has no available connections"
+          runbook_url: "https://docs.company.com/runbooks/database-connections-exhausted"

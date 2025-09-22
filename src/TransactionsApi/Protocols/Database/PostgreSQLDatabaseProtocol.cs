@@ -4,55 +4,60 @@ using Dapper;
 
 namespace TransactionsApi.Protocols.Database;
 
-public class PostgreSQLDatabaseProtocol : IDatabaseProtocol
+public class PostgreSQLDatabaseProtocol : IDatabaseProtocol, IDisposable
 {
   private readonly string _connectionString;
-  private IDbConnection? _connection;
 
   public PostgreSQLDatabaseProtocol(string connectionString)
   {
     _connectionString = connectionString;
   }
 
+  private async Task<IDbConnection> CreateConnectionAsync()
+  {
+    var connection = new NpgsqlConnection(_connectionString);
+    await connection.OpenAsync();
+    return connection;
+  }
+
   public async Task ConnectAsync()
   {
-    _connection = new NpgsqlConnection(_connectionString);
-    _connection.Open();
+    // No longer needed with new pattern, kept for interface compatibility
     await Task.CompletedTask;
   }
 
   public async Task DisconnectAsync()
   {
-    if (_connection != null)
-    {
-      _connection.Close();
-      _connection.Dispose();
-      _connection = null;
-    }
+    // No longer needed with new pattern, kept for interface compatibility
     await Task.CompletedTask;
   }
 
   public async Task<T?> QuerySingleAsync<T>(string sql, object? parameters = null)
   {
-    if (_connection == null) await ConnectAsync();
-    return await _connection!.QuerySingleOrDefaultAsync<T>(sql, parameters);
+    using var connection = await CreateConnectionAsync();
+    return await connection.QuerySingleOrDefaultAsync<T>(sql, parameters);
   }
 
   public async Task<IEnumerable<T>> QueryAsync<T>(string sql, object? parameters = null)
   {
-    if (_connection == null) await ConnectAsync();
-    return await _connection!.QueryAsync<T>(sql, parameters);
+    using var connection = await CreateConnectionAsync();
+    return await connection.QueryAsync<T>(sql, parameters);
   }
 
   public async Task<int> ExecuteAsync(string sql, object? parameters = null)
   {
-    if (_connection == null) await ConnectAsync();
-    return await _connection!.ExecuteAsync(sql, parameters);
+    using var connection = await CreateConnectionAsync();
+    return await connection.ExecuteAsync(sql, parameters);
   }
 
   public async Task<T> InsertAsync<T>(string sql, object parameters)
   {
-    if (_connection == null) await ConnectAsync();
-    return await _connection!.QuerySingleAsync<T>(sql, parameters);
+    using var connection = await CreateConnectionAsync();
+    return await connection.QuerySingleAsync<T>(sql, parameters);
+  }
+
+  public void Dispose()
+  {
+    // Nothing to dispose in the new pattern
   }
 }

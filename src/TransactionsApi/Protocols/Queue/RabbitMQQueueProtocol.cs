@@ -9,6 +9,7 @@ public class RabbitMQQueueProtocol : IQueueProtocol
   private readonly string _connectionString;
   private IConnection? _connection;
   private IModel? _channel;
+  private const string ExchangeName = "cash-flow-exchange";
 
   public RabbitMQQueueProtocol(string connectionString)
   {
@@ -20,6 +21,7 @@ public class RabbitMQQueueProtocol : IQueueProtocol
     var factory = new ConnectionFactory() { Uri = new Uri(_connectionString) };
     _connection = factory.CreateConnection();
     _channel = _connection.CreateModel();
+    _channel.ExchangeDeclare(ExchangeName, ExchangeType.Topic, durable: true);
     await Task.CompletedTask;
   }
 
@@ -41,7 +43,7 @@ public class RabbitMQQueueProtocol : IQueueProtocol
     var json = JsonSerializer.Serialize(message);
     var body = Encoding.UTF8.GetBytes(json);
 
-    _channel!.BasicPublish(exchange: "", routingKey: routingKey, basicProperties: null, body: body);
+    _channel!.BasicPublish(exchange: ExchangeName, routingKey: routingKey, basicProperties: null, body: body);
     await Task.CompletedTask;
   }
 

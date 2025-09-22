@@ -2,8 +2,25 @@ using TransactionsApi.Models.Data;
 using TransactionsApi.Protocols.Database;
 using TransactionsApi.Protocols.Queue;
 using FluentMigrator.Runner;
+using Prometheus;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configurar Serilog
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithEnvironmentName()
+    .Enrich.WithMachineName()
+    .Enrich.WithProperty("Service", "TransactionsApi")
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{Service}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/transactions-api-.log",
+        rollingInterval: RollingInterval.Day,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] [{Service}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 
 
@@ -28,6 +45,7 @@ builder.Services.AddFluentMigratorCore()
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+
 // Configurar JSON para aceitar strings em enums
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
@@ -36,18 +54,20 @@ builder.Services.ConfigureHttpJsonOptions(options =>
 
 var app = builder.Build();
 
-// Aplicar FluentMigrator migrations automaticamente
-using (var scope = app.Services.CreateScope())
-{
-    var migrationProtocol = scope.ServiceProvider.GetRequiredService<IMigrationProtocol>();
-    await migrationProtocol.MigrateUpAsync();
-}
+// Migrations são aplicadas por container dedicado
+Log.Information("TransactionsApi starting - migrations handled separately");
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+// Habilitar HTTP metrics middleware
+app.UseHttpMetrics();
+
+// Endpoint para métricas do Prometheus
+app.MapMetrics();
 
 
 
