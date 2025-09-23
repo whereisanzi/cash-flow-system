@@ -73,14 +73,12 @@ services:
     image: bitnami/pgbouncer:latest
     container_name: pgbouncer-transactions
     environment:
-      PGBOUNCER_DATABASES: "transactions_db = host=transactions-db port=5432 dbname=transactions_db"
       POSTGRESQL_USERNAME: "postgres"
       POSTGRESQL_PASSWORD: "postgres123"
       POSTGRESQL_HOST: "transactions-db"
       POSTGRESQL_PORT_NUMBER: "5432"
       POSTGRESQL_DATABASE: "transactions_db"
       PGBOUNCER_AUTH_TYPE: "md5"
-      PGBOUNCER_AUTH_USER: "postgres"
       PGBOUNCER_IGNORE_STARTUP_PARAMETERS: "extra_float_digits"
       PGBOUNCER_DEFAULT_POOL_SIZE: "20"
       PGBOUNCER_MAX_CLIENT_CONN: "1000"
@@ -100,14 +98,12 @@ services:
     image: bitnami/pgbouncer:latest
     container_name: pgbouncer-consolidations
     environment:
-      PGBOUNCER_DATABASES: "consolidations_db = host=consolidations-db port=5432 dbname=consolidations_db"
       POSTGRESQL_USERNAME: "postgres"
       POSTGRESQL_PASSWORD: "postgres123"
       POSTGRESQL_HOST: "consolidations-db"
       POSTGRESQL_PORT_NUMBER: "5432"
       POSTGRESQL_DATABASE: "consolidations_db"
       PGBOUNCER_AUTH_TYPE: "md5"
-      PGBOUNCER_AUTH_USER: "postgres"
       PGBOUNCER_IGNORE_STARTUP_PARAMETERS: "extra_float_digits"
       PGBOUNCER_DEFAULT_POOL_SIZE: "20"
       PGBOUNCER_MAX_CLIENT_CONN: "1000"
@@ -132,7 +128,7 @@ services:
       dockerfile: ./tools/TransactionsMigrator/Dockerfile
     container_name: transactions-migration
     environment:
-      ConnectionStrings__DefaultConnection: "Host=transactions-db;Database=transactions_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__DefaultConnection: "Host=transactions-db;Port=5432;Database=transactions_db;Username=postgres;Password=postgres123"
     networks:
       transactions_network:
         ipv4_address: 172.20.0.29
@@ -147,7 +143,7 @@ services:
       dockerfile: ./tools/ConsolidationsMigrator/Dockerfile
     container_name: consolidations-migration
     environment:
-      ConnectionStrings__DefaultConnection: "Host=consolidations-db;Database=consolidations_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__DefaultConnection: "Host=consolidations-db;Port=5432;Database=consolidations_db;Username=postgres;Password=postgres123"
     networks:
       consolidations_network:
         ipv4_address: 172.21.0.29
@@ -167,7 +163,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5001
-      ConnectionStrings__DefaultConnection: "Host=transactions-db;Port=5432;Database=transactions_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__DefaultConnection: "Host=pgbouncer-transactions;Port=6432;Database=postgres;Username=postgres;Password=postgres123"
       ConnectionStrings__RabbitMQ: "amqp://guest:guest@rabbitmq:5672/"
     networks:
       transactions_network:
@@ -191,7 +187,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5001
-      ConnectionStrings__DefaultConnection: "Host=transactions-db;Port=5432;Database=transactions_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__DefaultConnection: "Host=pgbouncer-transactions;Port=6432;Database=postgres;Username=postgres;Password=postgres123"
       ConnectionStrings__RabbitMQ: "amqp://guest:guest@rabbitmq:5672/"
     networks:
       transactions_network:
@@ -215,7 +211,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5002
-      ConnectionStrings__DefaultConnection: "Host=consolidations-db;Port=5432;Database=consolidations_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__DefaultConnection: "Host=pgbouncer-consolidations;Port=6432;Database=postgres;Username=postgres;Password=postgres123"
       ConnectionStrings__RabbitMQ: "amqp://guest:guest@rabbitmq:5672/"
     networks:
       consolidations_network:
@@ -239,7 +235,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ASPNETCORE_URLS: http://+:5002
-      ConnectionStrings__DefaultConnection: "Host=consolidations-db;Port=5432;Database=consolidations_db;Username=postgres;Password=postgres123"
+      ConnectionStrings__DefaultConnection: "Host=pgbouncer-consolidations;Port=6432;Database=postgres;Username=postgres;Password=postgres123"
       ConnectionStrings__RabbitMQ: "amqp://guest:guest@rabbitmq:5672/"
     networks:
       consolidations_network:
@@ -312,8 +308,6 @@ services:
         ipv4_address: 172.20.0.20
       consolidations_network:
         ipv4_address: 172.21.0.20
-      messaging_network:
-        ipv4_address: 172.23.0.10
       public_network:
         ipv4_address: 172.22.0.20
     ports:
@@ -432,6 +426,7 @@ services:
         ipv4_address: 172.22.0.85
     restart: on-failure
 
+
 ############################################################
 # Volumes
 ############################################################
@@ -459,10 +454,6 @@ networks:
     ipam:
       config:
         - subnet: 172.22.0.0/24
-  messaging_network:
-    ipam:
-      config:
-        - subnet: 172.23.0.0/24
   keycloak_network:
     ipam:
       config:
