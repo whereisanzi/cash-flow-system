@@ -260,27 +260,52 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  subgraph TX[Transactions API]
-    TSave[Persist Transaction]
-    TPublish[Publish transaction.created]
+  subgraph TxNet[transactions_network - PRIVATE]
+    subgraph TX[Transactions API]
+      TSave[Persist Transaction<br/>via Dapper]
+      TPublish[Publish transaction.created<br/>to RabbitMQ]
+    end
+    MQTx[RabbitMQ<br/>172.20.0.20]
   end
 
-  subgraph MQ[RabbitMQ]
-    EX[(Exchange: cash-flow-exchange)]
-    Q[Queue: consolidations-queue]
-    DLX[(DLX: cash-flow-dlx)]
-    DLQ[DLQ: consolidations-queue-dlq]
+  subgraph CoNet[consolidations_network - PRIVATE]
+    subgraph CO[Consolidations API]
+      CConsume[Background Consumer<br/>TransactionEventConsumer]
+      CUpdate[Update Daily Consolidation<br/>via EF Core]
+    end
+    MQCo[RabbitMQ<br/>172.21.0.20]
   end
 
-  subgraph CO[Consolidations API]
-    CConsume[Consumer]
-    CUpdate[Update Daily Consolidation]
+  subgraph MQ[RabbitMQ Logical Structure - PRIVATE]
+    EX[(Exchange: cash-flow-exchange<br/>type: topic)]
+    Q[Queue: consolidations-queue<br/>routing: transaction.created]
+    DLX[(DLX: cash-flow-dlx<br/>Dead Letter Exchange)]
+    DLQ[DLQ: consolidations-queue-dlq<br/>Failed Messages Storage]
   end
 
-  TSave --> TPublish --> EX --> Q
-  Q -->|deliver| CConsume --> CUpdate
+  %% Flow sequence
+  TSave -->|Success| TPublish
+  TPublish -.->|via 172.20.0.20:5672| MQTx
+  MQTx -.-> EX
+  EX -->|route by key| Q
+  Q -.->|via 172.21.0.20:5672| MQCo
+  MQCo -.-> CConsume
+
+  CConsume -->|Success| CUpdate
   CConsume -->|ack| Q
-  CConsume -. error .->|nack requeue=false| DLX --> DLQ
+
+  CConsume -->|Failure/Exception| CError[Log Error]
+  CError -->|nack requeue=false| DLX
+  DLX --> DLQ
+
+  %% Styling for security awareness
+  classDef private fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef message fill:#e8f5e8,stroke:#2e7d32,stroke-width:1px
+  classDef error fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+
+  class TSave,TPublish,CConsume,CUpdate,MQTx,MQCo private
+  class EX,Q message
+  class DLX,DLQ,CError error
 ```
 
 </details>
