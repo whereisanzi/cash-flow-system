@@ -63,12 +63,84 @@ O **Sistema de Fluxo de Caixa** é uma plataforma de processamento de transaçõ
 ## 🏗️ Arquitetura da Solução
 
 ### Visão Arquitetural
-O sistema implementa uma **arquitetura de microsserviços orientada a eventos** com as seguintes características:
+O sistema implementa uma **arquitetura de microsserviços orientada a eventos** baseada em princípios de **Domain-Driven Design (DDD)** e **Event-Driven Architecture (EDA)**. Esta abordagem foi escolhida para atender aos requisitos de alta disponibilidade, escalabilidade independente e resiliência operacional.
 
-- **Microsserviços Independentes**: Comunicação assíncrona via RabbitMQ com borda HTTP controlada por API Gateway (KrakenD) e load balancers (HAProxy)
-- **Persistência Desacoplada**: Cada serviço possui sua própria base PostgreSQL com acesso otimizado via PgBouncer
-- **Observabilidade Integrada**: Stack completo com Prometheus, Grafana, cAdvisor, Node Exporter e exporters especializados
-- **Isolamento de Rede**: Redes privadas segregadas por domínio com componentes de borda na rede pública
+![Padrões Arquiteturais](docs/diagrams/images/01-architecture-patterns.png)
+
+<details>
+<summary>🏛️ Ver detalhes dos padrões arquiteturais (clique para expandir)</summary>
+
+**Padrões Implementados:**
+- **Microservices Pattern**: Serviços independentes com responsabilidades bem definidas
+- **Event-Driven Architecture**: Comunicação assíncrona via eventos de domínio
+- **API Gateway Pattern**: Ponto único de entrada com roteamento e autenticação
+- **Database per Service**: Cada serviço possui sua própria base de dados
+- **Circuit Breaker**: Resilência através de load balancers com health checks
+- **Saga Pattern**: Transações distribuídas via eventos (eventual consistency)
+
+</details>
+
+### Características Arquiteturais Principais
+
+#### 🔄 Microsserviços Independentes
+A arquitetura é dividida em **dois domínios principais**, cada um com suas responsabilidades específicas:
+
+- **Transactions Domain**: Responsável pelo registro de transações financeiras em tempo real
+- **Consolidations Domain**: Responsável pela agregação e consulta de dados consolidados
+
+Esta separação permite que cada serviço evolua independentemente, seja escalado conforme necessidade e mantenha sua própria stack tecnológica otimizada para seu contexto de uso.
+
+#### 🌐 Comunicação Assíncrona
+O sistema utiliza **RabbitMQ** como message broker para comunicação entre serviços, implementando o padrão **Publisher/Subscriber**. Isso garante:
+
+- **Desacoplamento temporal**: Serviços não precisam estar online simultaneamente
+- **Resiliência**: Mensagens persistem mesmo com falhas de rede ou serviços
+- **Escalabilidade**: Processamento assíncrono permite maior throughput
+
+#### 🗄️ Persistência Desacoplada
+Cada serviço possui sua própria base **PostgreSQL** com acesso otimizado via **PgBouncer**:
+
+- **Transactions Service**: Otimizado para escritas rápidas com índices temporais
+- **Consolidations Service**: Otimizado para agregações e consultas analíticas
+- **Connection Pooling**: PgBouncer reduz overhead de conexões e melhora performance
+
+#### 🔒 Isolamento e Segurança
+A arquitetura implementa **defesa em profundidade** através de:
+
+![Segurança de Rede](docs/diagrams/images/05-network-security.png)
+
+<details>
+<summary>🛡️ Ver arquitetura de segurança detalhada (clique para expandir)</summary>
+
+**Camadas de Segurança Implementadas:**
+
+1. **Perímetro Externo**:
+   - API Gateway (KrakenD) como única porta de entrada
+   - Validação JWT centralizada com Keycloak
+   - Rate limiting e throttling
+
+2. **Rede Pública** (172.22.0.0/24):
+   - Apenas componentes de borda (Gateway, Load Balancers, Monitoring)
+   - Exposição controlada de portas específicas
+   - HAProxy com health checks automáticos
+
+3. **Redes Privadas Segregadas**:
+   - `transactions_network` (172.20.0.0/24): Isolamento do domínio de transações
+   - `consolidations_network` (172.21.0.0/24): Isolamento do domínio de consolidações
+   - `keycloak_network`: Rede dedicada para identity provider
+
+4. **Controles Internos**:
+   - APIs internas sem autenticação (princípio de confiança interna)
+   - Communication via service names (DNS interno)
+   - Database access apenas via connection pooling
+
+</details>
+
+**Benefícios da Arquitetura de Segurança:**
+- **Superfície de Ataque Reduzida**: Apenas o gateway é publicamente acessível
+- **Isolamento por Domínio**: Comprometimento de um serviço não afeta outros
+- **Auditabilidade**: Todo tráfego passa pelo gateway centralizado
+- **Escalabilidade Segura**: Novos serviços herdam o modelo de segurança
 
 ### Padrões Arquiteturais Implementados
 
@@ -166,17 +238,177 @@ Este projeto possui uma **biblioteca completa de diagramas** organizados sequenc
 - **[03-components-overview.mmd](docs/diagrams/03-components-overview.mmd)**: Visão geral dos componentes
 
 ### Modelo C4 (Context, Containers, Components, Code)
-- **[c4-01-system-context.mmd](docs/diagrams/c4-01-system-context.mmd)**: Contexto do sistema e usuários
-- **[c4-02-container.mmd](docs/diagrams/c4-02-container.mmd)**: Arquitetura de containers
-- **[c4-03a-transactions-components.mmd](docs/diagrams/c4-03a-transactions-components.mmd)**: Componentes do serviço de transações
-- **[c4-03b-consolidations-components.mmd](docs/diagrams/c4-03b-consolidations-components.mmd)**: Componentes do serviço de consolidações
-- **[c4-04a-transactions-code.mmd](docs/diagrams/c4-04a-transactions-code.mmd)**: Diagrama de classes - Transactions
-- **[c4-04b-consolidations-code.mmd](docs/diagrams/c4-04b-consolidations-code.mmd)**: Diagrama de classes - Consolidations
+
+O projeto segue o **modelo C4** para documentação arquitetural, proporcionando diferentes níveis de abstração para diferentes audiências:
+
+#### C4 Level 1 - System Context
+![C4 System Context](docs/diagrams/images/c4-01-system-context.png)
+
+<details>
+<summary>🌍 Ver contexto do sistema (clique para expandir)</summary>
+
+**Personas e Sistemas Externos:**
+- **Merchants (Comerciantes)**: Usuários finais que registram transações
+- **Financial Analysts**: Usuários que consultam consolidados e relatórios
+- **k6 Load Testing**: Sistema de testes automatizados
+- **Monitoring Systems**: Prometheus, Grafana para observabilidade
+
+**Fronteiras do Sistema:**
+O Cash Flow System atua como uma **plataforma centralizada** de processamento financeiro, integrando-se com sistemas de identity management (Keycloak) e fornecendo APIs REST para diferentes tipos de usuários.
+
+</details>
+
+#### C4 Level 2 - Container View
+![C4 Container View](docs/diagrams/images/c4-02-container.png)
+
+<details>
+<summary>📦 Ver arquitetura de containers (clique para expandir)</summary>
+
+**Containers Identificados:**
+- **KrakenD API Gateway**: Ponto de entrada único com roteamento inteligente
+- **Transactions API**: Serviço de domínio para processamento de transações
+- **Consolidations API**: Serviço de domínio para agregações e consultas
+- **PostgreSQL Databases**: Persistência segregada por domínio
+- **RabbitMQ**: Message broker para comunicação assíncrona
+- **Keycloak**: Identity and Access Management
+- **Monitoring Stack**: Prometheus, Grafana, cAdvisor
+
+**Relações e Protocolos:**
+Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP, SQL) garantindo baixo acoplamento e alta coesão.
+
+</details>
+
+#### C4 Level 3 - Component View
+
+**Transactions Service Components:**
+![C4 Transactions Components](docs/diagrams/images/c4-03a-transactions-components.png)
+
+<details>
+<summary>⚙️ Ver componentes do serviço de transações (clique para expandir)</summary>
+
+**Padrão "Flows" Implementado:**
+- **TransactionHandler**: Endpoints HTTP (Minimal APIs)
+- **TransactionFlow**: Orquestração do caso de uso
+- **TransactionLogic**: Validação e regras de domínio
+- **TransactionAdapter**: Mapeamento entre camadas
+- **DatabaseGateway**: Acesso a dados via Dapper
+- **QueueGateway**: Publicação de eventos via RabbitMQ
+
+**Vantagens do Padrão:**
+- **Testabilidade**: Cada componente é isoladamente testável
+- **Flexibilidade**: Fácil modificação de regras de negócio
+- **Performance**: Acesso direto a dados sem overhead de ORM
+
+</details>
+
+**Consolidations Service Components:**
+![C4 Consolidations Components](docs/diagrams/images/c4-03b-consolidations-components.png)
+
+<details>
+<summary>📊 Ver componentes do serviço de consolidações (clique para expandir)</summary>
+
+**Padrão Repository Implementado:**
+- **ConsolidationController**: Endpoints HTTP (Controller-based)
+- **ConsolidationService**: Lógica de domínio e orquestração
+- **ConsolidationRepository**: Acesso a dados via EF Core
+- **TransactionEventConsumer**: Consumer de eventos (BackgroundService)
+- **DailyConsolidation**: Entidade de domínio
+
+**Vantagens do Padrão:**
+- **Maturidade**: Padrão bem estabelecido e documentado
+- **Produtividade**: EF Core oferece APIs ricas para consultas
+- **Manutenibilidade**: Estrutura familiar para a maioria dos desenvolvedores
+
+</details>
+
+#### C4 Level 4 - Code View
+
+**Transactions Code Structure:**
+![C4 Transactions Code](docs/diagrams/images/c4-04a-transactions-code.png)
+
+<details>
+<summary>💻 Ver estrutura de código - Transactions (clique para expandir)</summary>
+
+**Interfaces e Contratos:**
+- `ITransactionFlow`, `ITransactionLogic`, `ITransactionAdapter`
+- `IDatabaseProtocol`, `IQueueProtocol`
+- Implementações concretas: `PostgreSQLProtocol`, `RabbitMQProtocol`
+
+**Modelos de Domínio:**
+- `Transaction`: Entidade raiz do agregado
+- `TransactionType`: Enum (Credit/Debit)
+- DTOs: `CreateTransactionRequest`, `TransactionResponse`
+
+</details>
+
+**Consolidations Code Structure:**
+![C4 Consolidations Code](docs/diagrams/images/c4-04b-consolidations-code.png)
+
+<details>
+<summary>📈 Ver estrutura de código - Consolidations (clique para expandir)</summary>
+
+**Interfaces e Contratos:**
+- `IConsolidationService`, `IConsolidationRepository`
+- `ITransactionEventConsumer`
+
+**Modelos de Domínio:**
+- `DailyConsolidation`: Entidade de agregação
+- `TransactionCreatedEvent`: Evento de integração
+- DTOs: `DailyConsolidationResponse`
+
+</details>
 
 ### Diagramas de Fluxo e Sequência
-- **[08-sequence-create-transaction.mmd](docs/diagrams/08-sequence-create-transaction.mmd)**: Sequência de criação de transação
-- **[08b-sequence-read-consolidation.mmd](docs/diagrams/08b-sequence-read-consolidation.mmd)**: Sequência de leitura de consolidação
-- **[08c-sequence-event-consumption.mmd](docs/diagrams/08c-sequence-event-consumption.mmd)**: Sequência de consumo de eventos
+
+Os diagramas de sequência mostram as **interações detalhadas** entre componentes para casos de uso específicos:
+
+#### Sequência de Leitura de Consolidação
+![Sequência - Read Consolidation](docs/diagrams/images/08b-sequence-read-consolidation.png)
+
+<details>
+<summary>📖 Ver sequência de leitura detalhada (clique para expandir)</summary>
+
+**Fluxo de Consulta de Consolidados:**
+1. Cliente autentica via Gateway (JWT validation)
+2. Gateway roteia para HAProxy Consolidations
+3. HAProxy seleciona instância disponível da Consolidations API
+4. Controller recebe request e valida parâmetros
+5. Service executa lógica de negócio
+6. Repository consulta via EF Core
+7. PgBouncer otimiza conexão com PostgreSQL
+8. Dados agregados retornados ao cliente
+
+**Padrões Observados:**
+- **Caching implícito**: EF Core Level 1 cache
+- **Connection pooling**: PgBouncer gerencia conexões
+- **Validação de entrada**: Data validation e business rules
+- **Transformação de dados**: Entity to DTO mapping
+
+</details>
+
+#### Sequência de Consumo de Eventos
+![Sequência - Event Consumption](docs/diagrams/images/08c-sequence-event-consumption.png)
+
+<details>
+<summary>🔄 Ver sequência de consumo de eventos (clique para expandir)</summary>
+
+**Fluxo de Processamento Assíncrono:**
+1. **Background Service** inicia e conecta ao RabbitMQ
+2. **Consumer** faz subscribe na queue `consolidations-queue`
+3. **Message delivery** via AMQP protocol
+4. **Event deserialization** de `TransactionCreatedEvent`
+5. **Business logic** para atualização de consolidado
+6. **Database update** via EF Core e PgBouncer
+7. **Message acknowledge** confirma processamento
+8. **Error handling** via Dead Letter Queue em caso de falha
+
+**Garantias de Qualidade:**
+- **At-least-once delivery**: RabbitMQ garante entrega
+- **Idempotency**: Lógica de negócio é idempotente
+- **Error recovery**: DLQ permite investigação de falhas
+- **Monitoring**: Métricas de queue depth e processing time
+
+</details>
 
 ### Fundamentos Teóricos
 - **[cap-theorem.mmd](docs/diagrams/cap-theorem.mmd)**: Análise do Teorema CAP com métricas reais
@@ -467,6 +699,135 @@ Consulte o diagrama completo em: [cap-theorem.mmd](docs/diagrams/cap-theorem.mmd
 Consulte o diagrama completo em: [pacelc-theorem.mmd](docs/diagrams/pacelc-theorem.mmd)
 
 </details>
+
+### 📊 Arquitetura de Monitoramento
+
+O sistema implementa uma **stack completa de observabilidade** seguindo as melhores práticas de **Site Reliability Engineering (SRE)**:
+
+![Arquitetura de Monitoramento](docs/diagrams/images/10-monitoring-architecture.png)
+
+<details>
+<summary>📈 Ver arquitetura de monitoramento detalhada (clique para expandir)</summary>
+
+**Componentes da Stack de Observabilidade:**
+
+1. **Coleta de Métricas**:
+   - **Application Metrics**: Métricas customizadas via `/metrics` endpoints
+   - **Infrastructure Metrics**: Node Exporter para métricas de sistema
+   - **Container Metrics**: cAdvisor para métricas de Docker
+   - **Database Metrics**: PgBouncer Exporter para connection pooling
+   - **Message Queue Metrics**: RabbitMQ Management Plugin
+
+2. **Armazenamento e Processamento**:
+   - **Prometheus**: Time-series database central
+   - **Recording Rules**: Pré-computação de métricas agregadas
+   - **Alert Rules**: Definição de condições de alerta baseadas em SLOs
+
+3. **Visualização e Alertas**:
+   - **Grafana**: Dashboards interativos e alerting
+   - **Alert Manager**: Roteamento e gestão de alertas
+   - **Dashboards Provisionados**: Configuração automatizada
+
+**Métricas-Chave Monitoradas:**
+- **Golden Signals**: Latency, Traffic, Errors, Saturation
+- **Business Metrics**: Transaction volume, consolidation lag, error rates
+- **Infrastructure Metrics**: CPU, Memory, Disk, Network
+- **Application Health**: Health checks, dependency status
+
+**SLOs e Alerting:**
+- **Availability SLO**: ≥99.9% uptime para serviços críticos
+- **Latency SLO**: p95 < 2000ms para transactions, p95 < 3000ms para consolidations
+- **Error Rate SLO**: ≤1% para transactions, ≤5% para consolidations durante picos
+
+</details>
+
+### 🧪 Estratégia de Testes Implementada
+
+![Estratégia de Testes](docs/diagrams/images/11-testing-strategy.png)
+
+<details>
+<summary>🔬 Ver estratégia de testes detalhada (clique para expandir)</summary>
+
+**Pirâmide de Testes Implementada:**
+
+1. **Testes Unitários** (Base da Pirâmide):
+   - **Coverage**: Flows, Logics, Adapters, Services
+   - **Frameworks**: xUnit, Moq para mocking
+   - **Foco**: Regras de negócio e transformações de dados
+   - **Execução**: `make test` - pipeline automatizado
+
+2. **Testes de Integração** (Meio da Pirâmide):
+   - **Database Integration**: Testes com TestContainers
+   - **Message Queue Integration**: RabbitMQ in-memory
+   - **API Integration**: Testes end-to-end de controllers
+
+3. **Testes de Performance** (Topo da Pirâmide):
+   - **k6 Load Testing**: Cenários realistas de carga
+   - **NFR Validation**: Validação de requisitos não-funcionais
+   - **Stress Testing**: Identificação de limites do sistema
+   - **Chaos Engineering**: Simulação de falhas
+
+**Tipos de Testes k6:**
+- **Health Tests**: Validação de conectividade e autenticação
+- **Functional Tests**: Validação de comportamento funcional
+- **Load Tests**: Validação de performance sob carga normal
+- **Stress Tests**: Validação de comportamento em cenários extremos
+- **Resilience Tests**: Validação de recuperação após falhas
+
+**Critérios de Aceitação:**
+- **Unit Tests**: ≥80% code coverage
+- **Integration Tests**: ≥95% success rate
+- **Load Tests**: SLOs atendidos sob carga esperada
+- **Stress Tests**: Degradação graceful, sem data loss
+
+</details>
+
+### 🚀 Pipeline DevOps
+
+![Pipeline DevOps](docs/diagrams/images/12-devops-pipeline.png)
+
+<details>
+<summary>⚙️ Ver pipeline DevOps detalhado (clique para expandir)</summary>
+
+**Estágios do Pipeline:**
+
+1. **Source Control**:
+   - **Git Flow**: Feature branches com pull requests
+   - **Code Review**: Revisão obrigatória por pares
+   - **Branch Protection**: Main branch protegida
+
+2. **Build & Test**:
+   - **Docker Build**: Multi-stage builds otimizados
+   - **Unit Testing**: Execução automatizada com coverage
+   - **Static Analysis**: SonarQube para qualidade de código
+   - **Security Scanning**: Vulnerability assessment
+
+3. **Integration Testing**:
+   - **Environment Provisioning**: Docker Compose automático
+   - **API Testing**: Postman/Newman collection
+   - **Load Testing**: k6 automated execution
+   - **Contract Testing**: PACT para garantias de API
+
+4. **Deployment**:
+   - **Infrastructure as Code**: Docker Compose templates
+   - **Blue-Green Deployment**: Zero-downtime deployment
+   - **Health Checks**: Validação automática pós-deploy
+   - **Rollback Strategy**: Reversão automática em caso de falha
+
+5. **Monitoring & Alerting**:
+   - **Metrics Collection**: Prometheus scraping automático
+   - **Alert Setup**: Configuração automática de alertas
+   - **Dashboard Provisioning**: Grafana dashboards automáticos
+
+**Qualidade e Governança:**
+- **Definition of Done**: Critérios claros para cada estágio
+- **Quality Gates**: SLOs como critério de aprovação
+- **Automated Testing**: 80%+ automation coverage
+- **Security First**: Security scanning em cada estágio
+
+</details>
+
+## 🚀 Início Rápido
 
 ### Pré-requisitos
 - Docker e Docker Compose
@@ -1295,9 +1656,58 @@ erDiagram
 
 </details>
 
-### Índices Implementados
-- **TRANSACTIONS**: `IX_Transactions_MerchantId`, `IX_Transactions_DateTime`
-- **DAILY_CONSOLIDATION**: `UNIQUE(MerchantId, Date)`
+### Relacionamento e Agregação de Dados
+
+![Relacionamento de Agregação](docs/diagrams/images/03-aggregation-relationship.png)
+
+<details>
+<summary>🔗 Ver relacionamento de dados detalhado (clique para expandir)</summary>
+
+**Estratégia de Agregação:**
+
+1. **Transações (Fonte)**:
+   - Cada transação individual é armazenada com timestamp
+   - Relacionamento 1:N entre Merchant e Transaction
+   - Indexação otimizada para queries temporais
+
+2. **Consolidação (Destino)**:
+   - Agregação diária por merchant
+   - Uma consolidação por merchant/data
+   - Atualização via eventos assíncronos
+
+3. **Relacionamento Lógico**:
+   - Transações **contribuem para** consolidações
+   - Relacionamento Many-to-One temporal
+   - Consistência eventual garantida via eventos
+
+**Vantagens da Abordagem:**
+- **Performance de Escrita**: Transações gravadas rapidamente sem agregação síncrona
+- **Performance de Leitura**: Consolidações pré-computadas para queries analíticas
+- **Escalabilidade**: Agregação assíncrona não impacta throughput de transações
+- **Resiliência**: Falhas na consolidação não afetam registro de transações
+
+**Padrões de Consistência:**
+- **Transações**: Consistência ACID dentro do serviço
+- **Entre Serviços**: Consistência eventual via eventos
+- **Reconciliação**: DLQ permite correção manual de inconsistências
+
+</details>
+
+### Índices e Otimizações Implementadas
+
+**Índices de Performance:**
+- **TRANSACTIONS**:
+  - `IX_Transactions_MerchantId`: Otimiza filtros por comerciante
+  - `IX_Transactions_DateTime`: Otimiza queries temporais e ordenação
+- **DAILY_CONSOLIDATION**:
+  - `UNIQUE(MerchantId, Date)`: Garante unicidade e otimiza consultas
+  - Index composto para queries eficientes
+
+**Estratégias de Otimização:**
+- **Connection Pooling**: PgBouncer reduz overhead de conexões
+- **Query Optimization**: EF Core com queries otimizadas
+- **Caching Strategy**: EF Core L1 cache + potencial para Redis
+- **Partitioning Ready**: Schema preparado para particionamento temporal
 
 ---
 
