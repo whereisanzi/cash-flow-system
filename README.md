@@ -88,6 +88,11 @@ O sistema implementa uma **arquitetura de microsserviços orientada a eventos** 
 
 ### Componentes e Fluxo de Alto Nível
 
+![Arquitetura de Componentes](docs/diagrams/images/04-components.png)
+
+<details>
+<summary>📋 Ver diagrama Mermaid (clique para expandir)</summary>
+
 ```mermaid
 flowchart LR
   subgraph Client
@@ -149,6 +154,8 @@ flowchart LR
   Gr --> P
 ```
 
+</details>
+
 ## 📊 Biblioteca de Diagramas
 
 Este projeto possui uma **biblioteca completa de diagramas** organizados sequencialmente para explicar a arquitetura em diferentes níveis de abstração. Todos os diagramas estão disponíveis em `docs/diagrams/`:
@@ -176,12 +183,43 @@ Este projeto possui uma **biblioteca completa de diagramas** organizados sequenc
 - **[pacelc-theorem.mmd](docs/diagrams/pacelc-theorem.mmd)**: Análise estendida do Teorema PACELC
 
 ### Evidências de NFR e Performance
-- **[13-nfr-evidence-dashboard.mmd](docs/diagrams/13-nfr-evidence-dashboard.mmd)**: Dashboard de evidências de NFR
-- **[14-performance-benchmarks.mmd](docs/diagrams/14-performance-benchmarks.mmd)**: Benchmarks de performance
-- **[15-test-execution-timeline.mmd](docs/diagrams/15-test-execution-timeline.mmd)**: Timeline de execução dos testes
-- **[16-metrics-scorecard.mmd](docs/diagrams/16-metrics-scorecard.mmd)**: Scorecard de métricas (Nota A+)
+
+#### Dashboard de Evidências de NFR
+![NFR Evidence Dashboard](docs/diagrams/images/13-nfr-evidence-dashboard.png)
+
+<details>
+<summary>📊 Ver dashboard completo de NFR (clique para expandir)</summary>
+
+Consulte o diagrama interativo completo em: [13-nfr-evidence-dashboard.mmd](docs/diagrams/13-nfr-evidence-dashboard.mmd)
+
+</details>
+
+#### Performance Benchmarks
+![Performance Benchmarks](docs/diagrams/images/14-performance-benchmarks.png)
+
+<details>
+<summary>📈 Ver benchmarks detalhados (clique para expandir)</summary>
+
+Consulte a análise completa em: [14-performance-benchmarks.mmd](docs/diagrams/14-performance-benchmarks.mmd)
+
+</details>
+
+#### Scorecard de Métricas (Nota A+)
+![Metrics Scorecard](docs/diagrams/images/16-metrics-scorecard.png)
+
+<details>
+<summary>🏆 Ver scorecard completo (clique para expandir)</summary>
+
+Consulte o scorecard detalhado em: [16-metrics-scorecard.mmd](docs/diagrams/16-metrics-scorecard.mmd)
+
+</details>
 
 ### Sequência do Caso de Uso "Criar Transação"
+
+![Sequência - Criar Transação](docs/diagrams/images/08a-sequence-create-transaction.png)
+
+<details>
+<summary>🔄 Ver sequência detalhada (clique para expandir)</summary>
 
 ```mermaid
 sequenceDiagram
@@ -211,9 +249,14 @@ sequenceDiagram
   Handler-->>Client: 201 Created
 ```
 
-Imagem (se renderizada): `docs/diagrams/out/sequence-create-transaction.png`
+</details>
 
-Fluxo assíncrono completo (Eventos, Consumo e DLQ)
+### Fluxo Assíncrono Completo (Eventos, Consumo e DLQ)
+
+![Fluxo Assíncrono](docs/diagrams/images/09-async-flow.png)
+
+<details>
+<summary>📨 Ver fluxo assíncrono detalhado (clique para expandir)</summary>
 
 ```mermaid
 flowchart LR
@@ -240,9 +283,14 @@ flowchart LR
   CConsume -. error .->|nack requeue=false| DLX --> DLQ
 ```
 
-Imagem (se renderizada): `docs/diagrams/out/async-flow.png`
+</details>
 
-Visão de Implantação (Redes e Borda)
+### Visão de Implantação (Redes e Segurança)
+
+![Deployment e Redes](docs/diagrams/images/06-deployment.png)
+
+<details>
+<summary>🌐 Ver topologia de rede detalhada (clique para expandir)</summary>
 
 ```mermaid
 flowchart LR
@@ -280,6 +328,8 @@ flowchart LR
   P <-- scrape --> G & HTX & HCO & T1 & T2 & C1 & C2
   Gr --> P
 ```
+
+</details>
 
 ## 🚀 Funcionalidades Principais
 
@@ -371,7 +421,27 @@ O sistema implementa uma **estratégia PA-EL** (Disponibilidade + Particionament
 - **Operação Normal**: Prioriza **Latência** sobre Consistência forte
 - **Resultado**: Consistência eventual com 100% de taxa de convergência
 
-Ver análise completa em: [CAP Theorem](docs/diagrams/cap-theorem.mmd) | [PACELC Theorem](docs/diagrams/pacelc-theorem.mmd)
+#### Análise CAP Theorem
+
+![Análise CAP Theorem](docs/diagrams/images/cap-theorem.png)
+
+<details>
+<summary>📊 Ver análise CAP detalhada (clique para expandir)</summary>
+
+Consulte o diagrama completo em: [cap-theorem.mmd](docs/diagrams/cap-theorem.mmd)
+
+</details>
+
+#### Análise PACELC Theorem
+
+![Análise PACELC Theorem](docs/diagrams/images/pacelc-theorem.png)
+
+<details>
+<summary>📊 Ver análise PACELC detalhada (clique para expandir)</summary>
+
+Consulte o diagrama completo em: [pacelc-theorem.mmd](docs/diagrams/pacelc-theorem.mmd)
+
+</details>
 
 ### Pré-requisitos
 - Docker e Docker Compose
@@ -738,6 +808,11 @@ container_memory_usage_bytes{name=~".*transactions.*"}
 
 **3. Fluxo de Autenticação**
 
+![Fluxo OAuth2/JWT](docs/diagrams/images/07-oauth-flow.png)
+
+<details>
+<summary>🔐 Ver fluxo de autenticação detalhado (clique para expandir)</summary>
+
 ```mermaid
 sequenceDiagram
   autonumber
@@ -760,6 +835,8 @@ sequenceDiagram
   HAP->>API: Request sem autenticação
   API-->>Client: Response (via HAProxy, Gateway)
 ```
+
+</details>
 
 #### Configuração de Segurança
 
@@ -1160,6 +1237,11 @@ curl http://localhost:8081/containers/
 
 ### Entidades Principais
 
+![Modelo de Dados](docs/diagrams/images/02-data-model.png)
+
+<details>
+<summary>🗃️ Ver modelo de dados detalhado (clique para expandir)</summary>
+
 ```mermaid
 erDiagram
   TRANSACTIONS {
@@ -1185,6 +1267,8 @@ erDiagram
 
   TRANSACTIONS ||--o{ DAILY_CONSOLIDATION : "contribui para agregação"
 ```
+
+</details>
 
 ### Índices Implementados
 - **TRANSACTIONS**: `IX_Transactions_MerchantId`, `IX_Transactions_DateTime`
