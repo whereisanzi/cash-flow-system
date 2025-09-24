@@ -1,0 +1,116 @@
+graph LR
+  subgraph EventStorming[🧠 Event Storming - Cash Flow Domain]
+    subgraph Legend[📋 Legenda]
+      Event[📝 Domain Event]
+      Command[⚡ Command]
+      Actor[👤 Actor/User]
+      Policy[📋 Policy]
+      ReadModel[📊 Read Model]
+      External[🔌 External System]
+      Aggregate[🏛️ Aggregate]
+      Issue[❗ Issue/Question]
+    end
+
+    subgraph TransactionFlow[💰 Transaction Flow - Core Business Process]
+      %% Actors
+      Merchant[👤 Merchant<br/>Comerciante]
+      FinancialAnalyst[👤 Financial Analyst<br/>Analista Financeiro]
+
+      %% Commands
+      CreateTransaction[⚡ Create Transaction<br/>Criar Transação]
+      QueryConsolidation[⚡ Query Daily Consolidation<br/>Consultar Consolidado]
+
+      %% Domain Events
+      TransactionCreated[📝 Transaction Created<br/>Transação Criada<br/>merchantId, type, amount, date]
+      ConsolidationUpdated[📝 Consolidation Updated<br/>Consolidado Atualizado<br/>merchantId, date, balance]
+
+      %% Aggregates
+      TransactionAggregate[🏛️ Transaction<br/>Aggregate Root<br/>- Validates business rules<br/>- Ensures data integrity]
+      ConsolidationAggregate[🏛️ Daily Consolidation<br/>Aggregate Root<br/>- Manages daily totals<br/>- Calculates net balance]
+
+      %% Policies
+      UpdateConsolidationPolicy[📋 Update Consolidation Policy<br/>When transaction created<br/>Then update daily consolidation<br/>ASYNCHRONOUSLY]
+
+      %% Read Models
+      DailyConsolidationView[📊 Daily Consolidation View<br/>merchantId, date, totalCredits,<br/>totalDebits, netBalance,<br/>transactionCount, lastUpdated]
+
+      %% External Systems
+      AuthSystem[🔌 Keycloak<br/>Authentication System]
+      MonitoringSystem[🔌 Prometheus/Grafana<br/>Monitoring System]
+      MessageBroker[🔌 RabbitMQ<br/>Message Broker]
+
+      %% Issues/Questions
+      IdempotencyIssue[❗ Idempotency Concern<br/>How to handle duplicate events?<br/>SOLUTION: Event versioning + deduplication]
+      ConsistencyIssue[❗ Eventual Consistency<br/>Delay in consolidation updates<br/>ACCEPTABLE: Max 40s convergence]
+      ScaleIssue[❗ Scale Concern<br/>High volume transactions<br/>SOLUTION: Horizontal scaling + partitioning]
+    end
+
+    %% Flow connections
+    Merchant -->|performs| CreateTransaction
+    FinancialAnalyst -->|performs| QueryConsolidation
+
+    CreateTransaction -->|validated by| AuthSystem
+    CreateTransaction -->|processed by| TransactionAggregate
+    TransactionAggregate -->|emits| TransactionCreated
+
+    TransactionCreated -->|triggers| UpdateConsolidationPolicy
+    UpdateConsolidationPolicy -->|via| MessageBroker
+    MessageBroker -->|delivers to| ConsolidationAggregate
+
+    ConsolidationAggregate -->|emits| ConsolidationUpdated
+    ConsolidationAggregate -->|updates| DailyConsolidationView
+
+    QueryConsolidation -->|reads from| DailyConsolidationView
+    DailyConsolidationView -->|returns to| FinancialAnalyst
+
+    %% Monitoring
+    TransactionCreated -.->|metrics| MonitoringSystem
+    ConsolidationUpdated -.->|metrics| MonitoringSystem
+
+    subgraph BoundedContexts[🎯 Bounded Contexts Identified]
+      TransactionContext[🔷 Transaction Context<br/>- Core transaction processing<br/>- Business rule validation<br/>- Event publishing<br/>- High consistency requirements]
+
+      ConsolidationContext[🔷 Consolidation Context<br/>- Data aggregation<br/>- Read-optimized queries<br/>- Event consumption<br/>- Eventual consistency acceptable]
+
+      IdentityContext[🔷 Identity Context<br/>- User authentication<br/>- Authorization policies<br/>- Token management<br/>- External bounded context]
+
+      MonitoringContext[🔷 Monitoring Context<br/>- System observability<br/>- Performance metrics<br/>- Health monitoring<br/>- Supporting bounded context]
+    end
+
+    subgraph DomainInsights[💡 Domain Insights from Event Storming]
+      BusinessRules[📐 Business Rules Identified<br/>• Transactions must have valid merchant<br/>• Amount must be positive<br/>• Type must be Credit or Debit<br/>• Consolidation per merchant/date<br/>• Daily aggregation only]
+
+      IntegrationPatterns[🔄 Integration Patterns<br/>• Event-Driven Integration<br/>• Asynchronous processing<br/>• Dead Letter Queue for failures<br/>• At-least-once delivery<br/>• Idempotent consumers]
+
+      NonFunctionalConcerns[⚖️ Non-Functional Concerns<br/>• High availability required for transactions<br/>• Eventually consistent consolidations OK<br/>• Sub-second transaction response time<br/>• Horizontal scalability needed<br/>• Audit trail for all transactions]
+    end
+
+    %% Context relationships
+    TransactionContext -->|publishes events to| ConsolidationContext
+    TransactionContext -->|authenticated by| IdentityContext
+    ConsolidationContext -->|monitored by| MonitoringContext
+    TransactionContext -->|monitored by| MonitoringContext
+  end
+
+  %% Styling
+  classDef actor fill:#e8f4fd,stroke:#1976d2,stroke-width:2px
+  classDef command fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef event fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef aggregate fill:#e8f5e8,stroke:#388e3c,stroke-width:3px
+  classDef policy fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+  classDef readmodel fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef external fill:#f5f5f5,stroke:#616161,stroke-width:2px
+  classDef issue fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+  classDef context fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+  classDef insight fill:#fff8e1,stroke:#ff8f00,stroke-width:2px
+
+  class Merchant,FinancialAnalyst actor
+  class CreateTransaction,QueryConsolidation command
+  class TransactionCreated,ConsolidationUpdated event
+  class TransactionAggregate,ConsolidationAggregate aggregate
+  class UpdateConsolidationPolicy policy
+  class DailyConsolidationView readmodel
+  class AuthSystem,MonitoringSystem,MessageBroker external
+  class IdempotencyIssue,ConsistencyIssue,ScaleIssue issue
+  class TransactionContext,ConsolidationContext,IdentityContext,MonitoringContext context
+  class BusinessRules,IntegrationPatterns,NonFunctionalConcerns insight

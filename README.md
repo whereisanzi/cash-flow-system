@@ -59,6 +59,190 @@ O **Sistema de Fluxo de Caixa** é uma plataforma de processamento de transaçõ
 - **Segurança Centralizada**: Validação JWT no API Gateway (KrakenD) com Keycloak. Serviços em redes privadas sem autenticação interna
 - **Migrações de Banco**: Executam em containers dedicados conectando diretamente aos bancos (sem PgBouncer) antes do provisionamento das APIs
 
+## 🧠 Domain-Driven Design (DDD)
+
+### Event Storming - Descoberta do Domínio
+
+O desenvolvimento do sistema foi iniciado com uma sessão de **Event Storming** para mapear o domínio financeiro e identificar os bounded contexts, eventos de domínio e fluxos de negócio:
+
+![Event Storming](docs/diagrams/images/00-event-storming.png)
+
+<details>
+<summary>🎯 Ver análise completa de Event Storming (clique para expandir)</summary>
+
+**Resultado da Sessão de Event Storming:**
+
+#### 🎭 **Atores Identificados**
+- **Merchant (Comerciante)**: Usuário principal que registra transações financeiras
+- **Financial Analyst**: Usuário que consulta relatórios e consolidações
+- **External Systems**: Keycloak (autenticação), RabbitMQ (messaging), Monitoring
+
+#### ⚡ **Comandos do Domínio**
+- **Create Transaction**: Comando para registrar nova transação (crédito/débito)
+- **Query Daily Consolidation**: Comando para consultar consolidado diário
+
+#### 📝 **Eventos de Domínio**
+- **Transaction Created**: Evento emitido quando transação é criada com sucesso
+- **Consolidation Updated**: Evento emitido quando consolidado é atualizado
+
+#### 🏛️ **Aggregates Identificados**
+- **Transaction Aggregate**: Responsável por validação e persistência de transações
+- **Daily Consolidation Aggregate**: Responsável por agregação e consulta de dados consolidados
+
+#### 🔷 **Bounded Contexts Descobertos**
+
+1. **Transaction Context** (Core Domain):
+   - Processamento de transações em tempo real
+   - Validação de regras de negócio
+   - Publicação de eventos de domínio
+   - Requisitos de alta consistência
+
+2. **Consolidation Context** (Supporting Domain):
+   - Agregação de dados para relatórios
+   - Consultas otimizadas para leitura
+   - Consumo de eventos assíncronos
+   - Consistência eventual aceitável
+
+3. **Identity Context** (Generic Subdomain):
+   - Autenticação e autorização
+   - Gestão de usuários e permissões
+   - Bounded context externo (Keycloak)
+
+4. **Monitoring Context** (Supporting Domain):
+   - Observabilidade do sistema
+   - Métricas de performance
+   - Health monitoring
+
+#### 📐 **Regras de Negócio Identificadas**
+- Transações devem ter merchant válido
+- Valor deve ser positivo
+- Tipo deve ser Credit (1) ou Debit (2)
+- Uma consolidação por merchant/data
+- Agregação apenas diária (não hora/minuto)
+
+#### ❗ **Issues e Decisões Arquiteturais**
+- **Idempotência**: Solucionado com versionamento de eventos e deduplicação
+- **Consistência Eventual**: Aceitável com convergência máxima de 40s
+- **Escalabilidade**: Horizontal scaling com particionamento por merchant
+
+**Código Mermaid do Diagrama:**
+```mermaid
+graph LR
+  subgraph EventStorming[🧠 Event Storming - Cash Flow Domain]
+    subgraph Legend[📋 Legenda]
+      Event[📝 Domain Event]
+      Command[⚡ Command]
+      Actor[👤 Actor/User]
+      Policy[📋 Policy]
+      ReadModel[📊 Read Model]
+      External[🔌 External System]
+      Aggregate[🏛️ Aggregate]
+      Issue[❗ Issue/Question]
+    end
+
+    subgraph TransactionFlow[💰 Transaction Flow - Core Business Process]
+      %% Actors
+      Merchant[👤 Merchant<br/>Comerciante]
+      FinancialAnalyst[👤 Financial Analyst<br/>Analista Financeiro]
+
+      %% Commands
+      CreateTransaction[⚡ Create Transaction<br/>Criar Transação]
+      QueryConsolidation[⚡ Query Daily Consolidation<br/>Consultar Consolidado]
+
+      %% Domain Events
+      TransactionCreated[📝 Transaction Created<br/>Transação Criada<br/>merchantId, type, amount, date]
+      ConsolidationUpdated[📝 Consolidation Updated<br/>Consolidado Atualizado<br/>merchantId, date, balance]
+
+      %% Aggregates
+      TransactionAggregate[🏛️ Transaction<br/>Aggregate Root<br/>- Validates business rules<br/>- Ensures data integrity]
+      ConsolidationAggregate[🏛️ Daily Consolidation<br/>Aggregate Root<br/>- Manages daily totals<br/>- Calculates net balance]
+
+      %% Policies
+      UpdateConsolidationPolicy[📋 Update Consolidation Policy<br/>When transaction created<br/>Then update daily consolidation<br/>ASYNCHRONOUSLY]
+
+      %% Read Models
+      DailyConsolidationView[📊 Daily Consolidation View<br/>merchantId, date, totalCredits,<br/>totalDebits, netBalance,<br/>transactionCount, lastUpdated]
+
+      %% External Systems
+      AuthSystem[🔌 Keycloak<br/>Authentication System]
+      MonitoringSystem[🔌 Prometheus/Grafana<br/>Monitoring System]
+      MessageBroker[🔌 RabbitMQ<br/>Message Broker]
+
+      %% Issues/Questions
+      IdempotencyIssue[❗ Idempotency Concern<br/>How to handle duplicate events?<br/>SOLUTION: Event versioning + deduplication]
+      ConsistencyIssue[❗ Eventual Consistency<br/>Delay in consolidation updates<br/>ACCEPTABLE: Max 40s convergence]
+      ScaleIssue[❗ Scale Concern<br/>High volume transactions<br/>SOLUTION: Horizontal scaling + partitioning]
+    end
+
+    %% Flow connections
+    Merchant -->|performs| CreateTransaction
+    FinancialAnalyst -->|performs| QueryConsolidation
+
+    CreateTransaction -->|validated by| AuthSystem
+    CreateTransaction -->|processed by| TransactionAggregate
+    TransactionAggregate -->|emits| TransactionCreated
+
+    TransactionCreated -->|triggers| UpdateConsolidationPolicy
+    UpdateConsolidationPolicy -->|via| MessageBroker
+    MessageBroker -->|delivers to| ConsolidationAggregate
+
+    ConsolidationAggregate -->|emits| ConsolidationUpdated
+    ConsolidationAggregate -->|updates| DailyConsolidationView
+
+    QueryConsolidation -->|reads from| DailyConsolidationView
+    DailyConsolidationView -->|returns to| FinancialAnalyst
+
+    %% Monitoring
+    TransactionCreated -.->|metrics| MonitoringSystem
+    ConsolidationUpdated -.->|metrics| MonitoringSystem
+  end
+```
+
+</details>
+
+### Linguagem Ubíqua (Ubiquitous Language)
+
+**Termos do Domínio Financeiro:**
+- **Transaction**: Movimentação financeira (crédito ou débito) de um merchant
+- **Merchant**: Comerciante/lojista que possui transações
+- **Credit**: Entrada de dinheiro (tipo 1)
+- **Debit**: Saída de dinheiro (tipo 2)
+- **Daily Consolidation**: Resumo diário das transações de um merchant
+- **Net Balance**: Saldo líquido (créditos - débitos)
+- **Convergence Time**: Tempo para consolidação refletir todas as transações
+
+**Padrões DDD Aplicados:**
+- **Aggregates**: Transaction e DailyConsolidation como raízes de agregado
+- **Domain Events**: TransactionCreated, ConsolidationUpdated
+- **Repositories**: Para persistência abstraída dos aggregates
+- **Domain Services**: Para lógicas que não pertencem a um aggregate específico
+- **Anti-Corruption Layer**: Gateway pattern para sistemas externos
+
+### Como o Event Storming Influenciou a Arquitetura
+
+**1. Separação de Bounded Contexts:**
+O Event Storming revelou que **Transaction** e **Consolidation** são contextos distintos com necessidades diferentes:
+- **Transaction Context**: Foco em consistência e performance de escrita
+- **Consolidation Context**: Foco em agregação e performance de leitura
+
+**2. Escolha da Comunicação Assíncrona:**
+A identificação do evento **Transaction Created** como ponto de integração natural levou à escolha do **RabbitMQ** para desacoplar os contextos temporal e logicamente.
+
+**3. Padrões Arquiteturais Por Contexto:**
+- **Transactions**: Padrão "Flows" para alta performance e controle fino
+- **Consolidations**: Padrão Repository para produtividade e queries complexas
+
+**4. Tratamento de Issues Identificadas:**
+- **Idempotência**: Implementação de chaves de deduplicação
+- **Eventual Consistency**: SLA de convergência de 40s aceito pelo negócio
+- **Escalabilidade**: Arquitetura preparada para particionamento horizontal
+
+**5. Linguagem Ubíqua no Código:**
+Os termos identificados no Event Storming são usados consistentemente em:
+- Nomes de classes e métodos
+- Eventos de domínio
+- DTOs e contratos de API
+- Documentação técnica
 
 ## 🏗️ Arquitetura da Solução
 
@@ -233,6 +417,7 @@ flowchart LR
 Este projeto possui uma **biblioteca completa de diagramas** organizados sequencialmente para explicar a arquitetura em diferentes níveis de abstração. Todos os diagramas estão disponíveis em `docs/diagrams/`:
 
 ### Diagramas de Fundação Arquitetural
+- **[00-event-storming.mmd](docs/diagrams/00-event-storming.mmd)**: Event Storming - Descoberta do domínio financeiro
 - **[01-architecture-patterns.mmd](docs/diagrams/01-architecture-patterns.mmd)**: Padrões arquiteturais utilizados
 - **[02-network-topology.mmd](docs/diagrams/02-network-topology.mmd)**: Topologia de rede e isolamento
 - **[03-components-overview.mmd](docs/diagrams/03-components-overview.mmd)**: Visão geral dos componentes
