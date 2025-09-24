@@ -1,0 +1,95 @@
+groups:
+  - name: cash_flow_alerts
+    rules:
+      # High Error Rate Alerts
+      - alert: HighErrorRateTransactions
+        expr: transactions_api:error_rate:5m > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: transactions-api
+        annotations:
+          summary: "High error rate in Transactions API"
+          description: "Transactions API error rate is {{ $value }}% for more than 2 minutes"
+
+      - alert: HighErrorRateConsolidations
+        expr: consolidations_api:error_rate:5m > 5
+        for: 2m
+        labels:
+          severity: critical
+          service: consolidations-api
+        annotations:
+          summary: "High error rate in Consolidations API"
+          description: "Consolidations API error rate is {{ $value }}% for more than 2 minutes"
+
+      # Low Availability Alerts
+      - alert: LowAvailabilityTransactions
+        expr: transactions_api:availability:5m < 99.9
+        for: 1m
+        labels:
+          severity: critical
+          service: transactions-api
+        annotations:
+          summary: "Low availability in Transactions API"
+          description: "Transactions API availability is {{ $value }}% (target: ≥99.9%)"
+
+      - alert: LowAvailabilityConsolidations
+        expr: consolidations_api:availability:5m < 99.9
+        for: 1m
+        labels:
+          severity: critical
+          service: consolidations-api
+        annotations:
+          summary: "Low availability in Consolidations API"
+          description: "Consolidations API availability is {{ $value }}% (target: ≥99.9%)"
+
+      # High Latency Alerts
+      - alert: HighLatencyTransactions
+        expr: transactions_api:latency_p99:5m > 1000
+        for: 5m
+        labels:
+          severity: warning
+          service: transactions-api
+        annotations:
+          summary: "High latency in Transactions API"
+          description: "Transactions API P99 latency is {{ $value }}ms for more than 5 minutes"
+
+      - alert: HighLatencyConsolidations
+        expr: consolidations_api:latency_p99:5m > 2000
+        for: 5m
+        labels:
+          severity: warning
+          service: consolidations-api
+        annotations:
+          summary: "High latency in Consolidations API"
+          description: "Consolidations API P99 latency is {{ $value }}ms for more than 5 minutes"
+
+      # Service Down Alerts
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "Service {{ $labels.job }} has been down for more than 1 minute"
+
+      # Database Connection Pool Alerts
+      - alert: HighDatabaseConnections
+        expr: pgbouncer_pools_cl_active > 18
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High database connections"
+          description: "Database {{ $labels.database }} has {{ $value }} active connections (threshold: 18)"
+
+      # RabbitMQ Queue Backlog
+      - alert: RabbitMQQueueBacklog
+        expr: rabbitmq_queue_messages > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "RabbitMQ queue backlog"
+          description: "Queue {{ $labels.queue }} has {{ $value }} messages pending"

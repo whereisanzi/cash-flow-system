@@ -1,0 +1,49 @@
+groups:
+  - name: cash_flow_slo_rules
+    rules:
+      # Availability rules
+      - record: transactions_api:availability:5m
+        expr: |
+          (
+            1 - (
+              rate(http_requests_received_total{job="transactions-api",code=~"5.."}[5m]) /
+              rate(http_requests_received_total{job="transactions-api"}[5m])
+            )
+          ) * 100
+
+      - record: consolidations_api:availability:5m
+        expr: |
+          (
+            1 - (
+              rate(http_requests_received_total{job="consolidations-api",code=~"5.."}[5m]) /
+              rate(http_requests_received_total{job="consolidations-api"}[5m])
+            )
+          ) * 100
+
+      # Error rate rules
+      - record: transactions_api:error_rate:5m
+        expr: |
+          (
+            rate(http_requests_received_total{job="transactions-api",code=~"[45].."}[5m]) /
+            rate(http_requests_received_total{job="transactions-api"}[5m])
+          ) * 100
+
+      - record: consolidations_api:error_rate:5m
+        expr: |
+          (
+            rate(http_requests_received_total{job="consolidations-api",code=~"[45].."}[5m]) /
+            rate(http_requests_received_total{job="consolidations-api"}[5m])
+          ) * 100
+
+      # Latency rules
+      - record: transactions_api:latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket{job="transactions-api"}[5m])
+          ) * 1000
+
+      - record: consolidations_api:latency_p99:5m
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket{job="consolidations-api"}[5m])
+          ) * 1000

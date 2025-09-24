@@ -31,6 +31,13 @@ help:
 	@echo "  make dev-apis       - Start only APIs"
 	@echo "  make health         - Check service health"
 	@echo ""
+	@echo "Load Testing:"
+	@echo "  make load-test-quick       - Quick test to validate API format and auth"
+	@echo "  make load-test-peak        - Peak load test (50 RPS consolidations, 5% error threshold)"
+	@echo "  make load-test-independence - Service independence test (consolidations failure)"
+	@echo "  make load-test-consistency - Service consistency test (consistency failure)"
+	@echo "  make load-test-health      - Health check before load tests"
+	@echo ""
 
 # Build images
 build:
@@ -48,10 +55,14 @@ up:
 	@echo "Available URLs:"
 	@echo "  API Gateway (KrakenD):          http://localhost:8000"
 	@echo "  Keycloak Admin Console:         http://localhost:8080 (admin/admin123)"
+	@echo "  Grafana Dashboard:              http://localhost:3000 (admin/admin123)"
+	@echo "  Prometheus:                     http://localhost:9090"
+	@echo "  cAdvisor (Container Metrics):   http://localhost:8081"
 	@echo "  HAProxy Stats (Transactions):   http://localhost:8181"
 	@echo "  HAProxy Stats (Consolidations): http://localhost:8282"
 	@echo "  KrakenD Metrics:                http://localhost:8090"
 	@echo "  RabbitMQ Management:            http://localhost:15672 (guest/guest)"
+	@echo "  RabbitMQ Metrics:               http://localhost:15692/metrics"
 	@echo ""
 	@echo "Endpoints via Gateway:"
 	@echo "  POST /api/v1/merchants/{merchant_id}/transactions"
@@ -136,3 +147,53 @@ health:
 	@curl -s http://localhost:8080/health/ready || echo "Keycloak: DOWN"
 	@curl -s http://localhost:15672/api/healthchecks/node || echo "RabbitMQ: DOWN"
 
+# Load testing commands
+load-test-quick:
+	@echo "Running quick API validation test..."
+	@docker run --rm -i --network cash-flow-system_public_network \
+		-v $(PWD)/tests/k6:/scripts \
+		grafana/k6:latest run \
+		--env BASE_URL=http://krakend:8080 \
+		/scripts/quick-test.js
+
+load-test-health:
+	@echo "Checking system health before load tests..."
+	@echo "Testing authentication..."
+	@curl -s -X POST http://localhost:8000/api/v1/auth/token \
+		-H "Content-Type: application/x-www-form-urlencoded" \
+		-d "grant_type=password&client_id=cash-flow-api&client_secret=cash-flow-secret-2024&username=merchant1&password=merchant123" \
+		| grep -q "access_token" && echo "Authentication: OK" || echo "Authentication: FAILED"
+	@echo "System ready for load testing"
+
+load-test-peak:
+	@echo "Starting peak load test..."
+	@echo "Target: 50 RPS on consolidations API with max 5% error rate"
+	@echo "Duration: ~12 minutes total"
+	@echo ""
+	@docker run --rm -i --network cash-flow-system_public_network \
+		-v $(PWD)/tests/k6:/scripts \
+		grafana/k6:latest run \
+		--env BASE_URL=http://krakend:8080 \
+		/scripts/peak-load-test.js
+
+load-test-independence:
+	@echo "Starting service independence test..."
+	@echo "Testing: Transactions API availability during consolidations failure"
+	@echo "Duration: ~6 minutes total"
+	@echo ""
+	@docker run --rm -i --network cash-flow-system_public_network \
+		-v $(PWD)/tests/k6:/scripts \
+		grafana/k6:latest run \
+		--env BASE_URL=http://krakend:8080 \
+		/scripts/independence-test.js
+
+load-test-consistency:
+	@echo "Starting service consistency test..."
+	@echo "Testing: Transactions and Consolidations data consistency"
+	@echo "Duration: ~8 minutes total"
+	@echo ""
+	@docker run --rm -i --network cash-flow-system_public_network \
+		-v $(PWD)/tests/k6:/scripts \
+		grafana/k6:latest run \
+		--env BASE_URL=http://krakend:8080 \
+		/scripts/consistency-test.js

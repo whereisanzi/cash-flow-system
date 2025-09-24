@@ -1,0 +1,72 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "/etc/prometheus/rules/*.yml"
+
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  - job_name: 'transactions-api'
+    static_configs:
+      - targets: ['transactions-api-1:5001', 'transactions-api-2:5001']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'consolidations-api'
+    static_configs:
+      - targets: ['consolidations-api-1:5002', 'consolidations-api-2:5002']
+    metrics_path: '/metrics'
+    scrape_interval: 5s
+
+  - job_name: 'krakend'
+    static_configs:
+      - targets: ['krakend:8090']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'haproxy-transactions'
+    static_configs:
+      - targets: ['haproxy-transactions:8181']
+    metrics_path: '/stats;csv'
+    scrape_interval: 15s
+
+  - job_name: 'haproxy-consolidations'
+    static_configs:
+      - targets: ['haproxy-consolidations:8282']
+    metrics_path: '/stats;csv'
+    scrape_interval: 15s
+
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq:15692']
+    metrics_path: '/metrics'
+    scrape_interval: 15s
+
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+    scrape_interval: 15s
+
+  - job_name: 'cadvisor'
+    static_configs:
+      - targets: ['cadvisor:8080']
+    scrape_interval: 15s
+
+  - job_name: 'pgbouncer-transactions'
+    static_configs:
+      - targets: ['pgbouncer-exporter-transactions:9127']
+    scrape_interval: 15s
+
+  - job_name: 'pgbouncer-consolidations'
+    static_configs:
+      - targets: ['pgbouncer-exporter-consolidations:9127']
+    scrape_interval: 15s
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: []

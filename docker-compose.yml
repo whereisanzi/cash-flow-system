@@ -301,8 +301,10 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
+      RABBITMQ_PLUGINS: "rabbitmq_management,rabbitmq_prometheus"
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+      - ./config/rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins
     networks:
       transactions_network:
         ipv4_address: 172.20.0.20
@@ -312,6 +314,7 @@ services:
         ipv4_address: 172.22.0.20
     ports:
       - "15672:15672"
+      - "15692:15692"
     expose:
       - "5672"
     healthcheck:
@@ -375,6 +378,71 @@ services:
   ############################################################
   # Observabilidade
   ############################################################
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: cadvisor
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk/:/dev/disk:ro
+    ports:
+      - "8081:8080"
+    networks:
+      public_network:
+        ipv4_address: 172.22.0.95
+    restart: on-failure
+    command:
+      - '--housekeeping_interval=10s'
+      - '--docker_only=true'
+      - '--storage_duration=1m0s'
+
+  pgbouncer-exporter-transactions:
+    image: prometheuscommunity/pgbouncer-exporter:latest
+    container_name: pgbouncer-exporter-transactions
+    environment:
+      PGBOUNCER_EXPORTER_HOST: pgbouncer-transactions
+      PGBOUNCER_EXPORTER_PORT: 6432
+      PGBOUNCER_EXPORTER_USER: postgres
+      PGBOUNCER_EXPORTER_PASS: postgres123
+      PGBOUNCER_EXPORTER_DATABASE: pgbouncer
+    networks:
+      transactions_network:
+        ipv4_address: 172.20.0.95
+      public_network:
+        ipv4_address: 172.22.0.96
+    expose:
+      - "9127"
+    depends_on:
+      pgbouncer-transactions:
+        condition: service_started
+    restart: on-failure
+
+  pgbouncer-exporter-consolidations:
+    image: prometheuscommunity/pgbouncer-exporter:latest
+    container_name: pgbouncer-exporter-consolidations
+    environment:
+      PGBOUNCER_EXPORTER_HOST: pgbouncer-consolidations
+      PGBOUNCER_EXPORTER_PORT: 6432
+      PGBOUNCER_EXPORTER_USER: postgres
+      PGBOUNCER_EXPORTER_PASS: postgres123
+      PGBOUNCER_EXPORTER_DATABASE: pgbouncer
+    networks:
+      consolidations_network:
+        ipv4_address: 172.21.0.95
+      public_network:
+        ipv4_address: 172.22.0.97
+    expose:
+      - "9127"
+    depends_on:
+      pgbouncer-consolidations:
+        condition: service_started
+    restart: on-failure
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus

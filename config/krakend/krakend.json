@@ -95,7 +95,7 @@
           "url_pattern": "/api/v1/merchants/{merchant_id}/transactions",
           "method": "POST",
           "host": [
-            "http://172.22.0.51:8080"
+            "http://haproxy-transactions:8080"
           ]
         }
       ]
@@ -104,6 +104,7 @@
       "endpoint": "/api/v1/merchants/{merchant_id}/consolidations/daily",
       "method": "GET",
       "timeout": "3000ms",
+      "output_encoding": "no-op",
       "input_query_strings": [
         "date"
       ],
@@ -127,9 +128,14 @@
           "url_pattern": "/api/v1/merchants/{merchant_id}/consolidations/daily",
           "method": "GET",
           "host": [
-            "http://172.22.0.52:8080"
+            "http://haproxy-consolidations:8080"
           ],
-          "disable_host_sanitize": true
+          "disable_host_sanitize": true,
+          "extra_config": {
+            "backend/http": {
+              "return_error_details": "backend_alias"
+            }
+          }
         }
       ]
     }
