@@ -1,0 +1,182 @@
+classDiagram
+  %% Handler Layer
+  class TransactionHandler {
+    +PostAsync(merchantId: string, request: CreateTransactionRequest) Task<IResult>
+    +GetHealthAsync() IResult
+    -_transactionFlow: ITransactionFlow
+  }
+
+  %% Flow Orchestration Layer
+  class ITransactionFlow {
+    <<interface>>
+    +CreateTransactionAsync(merchantId: string, request: CreateTransactionRequest) Task<TransactionResponse>
+  }
+
+  class TransactionFlow {
+    +CreateTransactionAsync(merchantId: string, request: CreateTransactionRequest) Task<TransactionResponse>
+    -_logic: ITransactionLogic
+    -_adapter: ITransactionAdapter
+    -_databaseGateway: IDatabaseGateway
+    -_queueGateway: IQueueGateway
+    -_logger: ILogger
+  }
+
+  %% Domain Logic Layer
+  class ITransactionLogic {
+    <<interface>>
+    +ValidateRequest(request: CreateTransactionRequest) ValidationResult
+    +ValidateAndEnrich(transaction: Transaction) Task<Transaction>
+  }
+
+  class TransactionLogic {
+    +ValidateRequest(request: CreateTransactionRequest) ValidationResult
+    +ValidateAndEnrich(transaction: Transaction) Task<Transaction>
+    -ValidateAmount(amount: decimal) bool
+    -ValidateDescription(description: string) bool
+  }
+
+  %% Adapter Layer
+  class ITransactionAdapter {
+    <<interface>>
+    +ToCore(request: CreateTransactionRequest, merchantId: string) Transaction
+    +ToResponse(transaction: Transaction) TransactionResponse
+    +ToEvent(transaction: Transaction) TransactionCreatedEvent
+  }
+
+  class TransactionAdapter {
+    +ToCore(request: CreateTransactionRequest, merchantId: string) Transaction
+    +ToResponse(transaction: Transaction) TransactionResponse
+    +ToEvent(transaction: Transaction) TransactionCreatedEvent
+  }
+
+  %% Gateway Layer
+  class IDatabaseGateway {
+    <<interface>>
+    +SaveTransactionAsync(transaction: Transaction) Task<Transaction>
+    +GetTransactionByIdAsync(id: Guid) Task<Transaction>
+  }
+
+  class DatabaseGateway {
+    +SaveTransactionAsync(transaction: Transaction) Task<Transaction>
+    +GetTransactionByIdAsync(id: Guid) Task<Transaction>
+    -_protocol: IDatabaseProtocol
+  }
+
+  class IQueueGateway {
+    <<interface>>
+    +PublishTransactionCreatedAsync(event: TransactionCreatedEvent) Task
+  }
+
+  class QueueGateway {
+    +PublishTransactionCreatedAsync(event: TransactionCreatedEvent) Task
+    -_protocol: IQueueProtocol
+  }
+
+  %% Protocol Layer
+  class IDatabaseProtocol {
+    <<interface>>
+    +ExecuteAsync(sql: string, parameters: object) Task<int>
+    +QueryFirstOrDefaultAsync<T>(sql: string, parameters: object) Task<T>
+  }
+
+  class IQueueProtocol {
+    <<interface>>
+    +PublishAsync(exchange: string, routingKey: string, message: object) Task
+  }
+
+  class DapperDatabaseProtocol {
+    +ExecuteAsync(sql: string, parameters: object) Task<int>
+    +QueryFirstOrDefaultAsync<T>(sql: string, parameters: object) Task<T>
+    -_connectionString: string
+  }
+
+  class RabbitMQProtocol {
+    +PublishAsync(exchange: string, routingKey: string, message: object) Task
+    -_connection: IConnection
+    -_channel: IModel
+  }
+
+  %% Domain Models
+  class Transaction {
+    +Id: Guid
+    +MerchantId: string
+    +Type: TransactionType
+    +Amount: decimal
+    +DateTime: DateTime
+    +Description: string
+    +CreatedAt: DateTime
+    +Validate() ValidationResult
+  }
+
+  class TransactionType {
+    <<enumeration>>
+    Debit = 0
+    Credit = 1
+  }
+
+  %% DTOs
+  class CreateTransactionRequest {
+    +Type: int
+    +Amount: decimal
+    +Description: string
+  }
+
+  class TransactionResponse {
+    +Id: Guid
+    +MerchantId: string
+    +Type: int
+    +Amount: decimal
+    +DateTime: DateTime
+    +Description: string
+  }
+
+  %% Events
+  class TransactionCreatedEvent {
+    +Id: Guid
+    +MerchantId: string
+    +Type: int
+    +Amount: decimal
+    +DateTime: DateTime
+    +CreatedAt: DateTime
+  }
+
+  %% Infra
+  class ValidationResult {
+    +IsValid: bool
+    +Errors: List<string>
+  }
+
+  %% Relationships
+  TransactionHandler --> ITransactionFlow : uses
+  TransactionHandler --> CreateTransactionRequest : receives
+  TransactionHandler --> TransactionResponse : returns
+
+  ITransactionFlow <|.. TransactionFlow : implements
+  TransactionFlow --> ITransactionLogic : orchestrates
+  TransactionFlow --> ITransactionAdapter : maps
+  TransactionFlow --> IDatabaseGateway : persists
+  TransactionFlow --> IQueueGateway : publishes
+
+  ITransactionLogic <|.. TransactionLogic : implements
+  TransactionLogic --> ValidationResult : returns
+  TransactionLogic --> Transaction : validates
+
+  ITransactionAdapter <|.. TransactionAdapter : implements
+  TransactionAdapter --> CreateTransactionRequest : maps from
+  TransactionAdapter --> Transaction : maps to/from
+  TransactionAdapter --> TransactionResponse : maps to
+  TransactionAdapter --> TransactionCreatedEvent : maps to
+
+  IDatabaseGateway <|.. DatabaseGateway : implements
+  DatabaseGateway --> IDatabaseProtocol : uses
+  DatabaseGateway --> Transaction : persists
+
+  IQueueGateway <|.. QueueGateway : implements
+  QueueGateway --> IQueueProtocol : uses
+  QueueGateway --> TransactionCreatedEvent : publishes
+
+  IDatabaseProtocol <|.. DapperDatabaseProtocol : implements
+  IQueueProtocol <|.. RabbitMQProtocol : implements
+
+  Transaction --> TransactionType : has
+  Transaction --> ValidationResult : validates to

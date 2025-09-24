@@ -1,0 +1,102 @@
+graph TB
+  subgraph Applications[Application Services]
+    TxAPI1[Transactions API #1<br/>:5001/metrics]
+    TxAPI2[Transactions API #2<br/>:5001/metrics]
+    CoAPI1[Consolidations API #1<br/>:5002/metrics]
+    CoAPI2[Consolidations API #2<br/>:5002/metrics]
+    Gateway[KrakenD Gateway<br/>:8090/metrics]
+  end
+
+  subgraph Infrastructure[Infrastructure Services]
+    HAProxyTx[HAProxy TX<br/>:8181/stats;csv]
+    HAProxyCo[HAProxy CO<br/>:8282/stats;csv]
+    RabbitMQ[RabbitMQ<br/>:15692/metrics]
+    PgBouncerTx[PgBouncer TX<br/>:9127<br/>exporter]
+    PgBouncerCo[PgBouncer CO<br/>:9127<br/>exporter]
+  end
+
+  subgraph SystemMetrics[System-Level Monitoring]
+    NodeExporter[Node Exporter<br/>:9100/metrics<br/>• CPU, Memory, Disk<br/>• Network, Load<br/>• File System]
+    cAdvisor[cAdvisor<br/>:8080/metrics<br/>• Container Resources<br/>• Docker Statistics<br/>• Runtime Metrics]
+  end
+
+  subgraph MonitoringStack[Monitoring & Alerting Stack]
+    Prometheus[Prometheus Server<br/>:9090<br/>• Metrics Collection<br/>• Rule Evaluation<br/>• Data Storage]
+
+    subgraph PrometheusConfig[Prometheus Configuration]
+      ScrapeConfigs[Scrape Configs<br/>• 15s default interval<br/>• 5s for APIs<br/>• Custom paths & ports]
+
+      subgraph Rules[Recording & Alerting Rules]
+        SLORules[SLO Rules<br/>• Availability ≥99.9%<br/>• Error Rate ≤5%<br/>• Latency p99 thresholds]
+        AlertRules[Alert Rules<br/>• Service Down<br/>• High Error Rate<br/>• Performance Degradation]
+      end
+    end
+  end
+
+  subgraph Visualization[Dashboards & Visualization]
+    Grafana[Grafana<br/>:3000<br/>• Real-time Dashboards<br/>• Custom Panels<br/>• Alert Visualization]
+
+    subgraph Dashboards[Pre-built Dashboards]
+      CashFlowDash[Cash Flow System Dashboard<br/>• Service Health<br/>• Performance Metrics<br/>• Business KPIs]
+      ServiceDash[Service-Specific Views<br/>• Transaction Throughput<br/>• Consolidation Latency<br/>• Queue Depths]
+      InfraDash[Infrastructure Dashboard<br/>• Resource Utilization<br/>• Network Performance<br/>• Storage Metrics]
+    end
+  end
+
+  subgraph MetricsData[Metrics Categories]
+    subgraph AppMetrics[Application Metrics]
+      HTTPMetrics[HTTP Metrics<br/>• Request Duration<br/>• Status Codes<br/>• Throughput]
+      BusinessMetrics[Business Metrics<br/>• Transactions Created<br/>• Consolidations Updated<br/>• Processing Times]
+      CustomMetrics[Custom Metrics<br/>• Queue Processing<br/>• Database Operations<br/>• Error Classifications]
+    end
+
+    subgraph SLOMetrics[SLO/SLA Metrics]
+      Availability[Service Availability<br/>transactions_api:availability:5m<br/>consolidations_api:availability:5m]
+      ErrorRate[Error Rates<br/>transactions_api:error_rate:5m<br/>consolidations_api:error_rate:5m]
+      Latency[Latency Percentiles<br/>transactions_api:latency_p99:5m<br/>consolidations_api:latency_p99:5m]
+    end
+  end
+
+  %% Scraping connections
+  Prometheus -.->|scrape 5s| TxAPI1 & TxAPI2 & CoAPI1 & CoAPI2
+  Prometheus -.->|scrape 15s| Gateway & HAProxyTx & HAProxyCo & RabbitMQ
+  Prometheus -.->|scrape 15s| NodeExporter & cAdvisor & PgBouncerTx & PgBouncerCo
+
+  %% Configuration flow
+  ScrapeConfigs -.-> Prometheus
+  SLORules --> Prometheus
+  AlertRules --> Prometheus
+
+  %% Data flow
+  Prometheus --> Rules
+  Prometheus -.-> Grafana
+  Grafana --> Dashboards
+
+  %% Metrics categorization
+  TxAPI1 & TxAPI2 & CoAPI1 & CoAPI2 -.-> HTTPMetrics & BusinessMetrics & CustomMetrics
+  Gateway & HAProxyTx & HAProxyCo -.-> HTTPMetrics
+  Prometheus --> Availability & ErrorRate & Latency
+
+  %% Alert flow
+  AlertRules -.->|Trigger| Grafana
+  SLORules -.->|Calculate| SLOMetrics
+
+  %% Example queries annotations
+  Availability -.->|PromQL Example| AvailabilityQuery["avg_over_time(up{job='transactions-api'}[5m])"]
+  ErrorRate -.->|PromQL Example| ErrorQuery["rate(http_requests_total{status=~'5..'}[5m]) / rate(http_requests_total[5m])"]
+  Latency -.->|PromQL Example| LatencyQuery["histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))"]
+
+  %% Styling
+  classDef app fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+  classDef infra fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef system fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef monitoring fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+  classDef visualization fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
+  classDef metrics fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+
+  class TxAPI1,TxAPI2,CoAPI1,CoAPI2,Gateway app
+  class HAProxyTx,HAProxyCo,RabbitMQ,PgBouncerTx,PgBouncerCo infra
+  class NodeExporter,cAdvisor system
+  class Prometheus,ScrapeConfigs,Rules,SLORules,AlertRules monitoring
+  class Grafana,Dashboards,CashFlowDash,ServiceDash,InfraDash visualization
+  class AppMetrics,SLOMetrics,HTTPMetrics,BusinessMetrics,CustomMetrics,Availability,ErrorRate,Latency metrics

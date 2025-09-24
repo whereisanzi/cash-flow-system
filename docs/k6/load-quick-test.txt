@@ -1,0 +1,48 @@
+time="2025-09-24T04:51:10Z" level=info msg="Previous balance: -983407, Current balance: -981707" source=console
+time="2025-09-24T04:51:10Z" level=info msg="Balance change: 1700, Expected change: 1700" source=console
+time="2025-09-24T04:51:10Z" level=info msg="Consolidation summary for merchant_1:" source=console
+time="2025-09-24T04:51:10Z" level=info msg="  Total Credits: 2708927" source=console
+time="2025-09-24T04:51:10Z" level=info msg="  Total Debits: 3690634" source=console
+time="2025-09-24T04:51:10Z" level=info msg="  Net Balance: -981707" source=console
+time="2025-09-24T04:51:10Z" level=info msg="  Transaction Count: 3759" source=console
+time="2025-09-24T04:51:10Z" level=info msg="  Last Updated: 2025-09-24T04:51:07.48806Z" source=console
+
+running (0m34.0s), 1/1 VUs, 6 complete and 0 interrupted iterations
+default ↓ [ 100% ] 1 VUs  30s
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......: 112     3.280535/s
+    checks_succeeded...: 100.00% 112 out of 112
+    checks_failed......: 0.00%   0 out of 112
+
+    ✓ consolidation retrieved successfully
+    ✓ consolidation has valid JSON
+    ✓ consolidation has required fields
+    ✓ transaction created successfully
+    ✓ no JSON parsing errors
+    ✓ response has valid JSON
+    ✓ balance changed correctly after transactions
+
+    HTTP
+    http_req_duration..............: avg=69.62ms min=4.56ms med=14.92ms max=1.21s p(90)=109.51ms p(95)=165.06ms
+      { expected_response:true }...: avg=69.62ms min=4.56ms med=14.92ms max=1.21s p(90)=109.51ms p(95)=165.06ms
+    http_req_failed................: 0.00% 0 out of 36
+    http_reqs......................: 36    1.054458/s
+
+    EXECUTION
+    iteration_duration.............: avg=4.87s   min=4.57s  med=4.61s   max=6.3s  p(90)=5.4s     p(95)=5.85s
+    iterations.....................: 7     0.205033/s
+    vus............................: 1     min=1       max=1
+    vus_max........................: 1     min=1       max=1
+
+    NETWORK
+    data_received..................: 18 kB 512 B/s
+    data_sent......................: 39 kB 1.1 kB/s
+
+
+
+
+running (0m34.1s), 0/1 VUs, 7 complete and 0 interrupted iterations
+default ✓ [ 100% ] 1 VUs  30s

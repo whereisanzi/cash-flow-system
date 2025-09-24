@@ -1,0 +1,96 @@
+time="2025-09-24T05:00:34Z" level=info source=console
+time="2025-09-24T05:00:34Z" level=info msg="=== NFR Validation Results ===" source=console
+time="2025-09-24T05:00:34Z" level=info msg="Total Duration: 270.3s" source=console
+time="2025-09-24T05:00:34Z" level=info source=console
+time="2025-09-24T05:00:34Z" level=info msg="Key Metrics to Review:" source=console
+time="2025-09-24T05:00:34Z" level=info msg="1. consolidation_error_rate{test_type:peak_consolidations} - Must be ≤ 5%" source=console
+time="2025-09-24T05:00:34Z" level=info msg="2. transaction_service_availability{test_type:transaction_resilience} - Must be ≥ 98%" source=console
+time="2025-09-24T05:00:34Z" level=info msg="3. http_req_duration - Response times during peak load" source=console
+time="2025-09-24T05:00:34Z" level=info source=console
+time="2025-09-24T05:00:34Z" level=info msg="If thresholds PASSED: NFRs are satisfied" source=console
+time="2025-09-24T05:00:34Z" level=info msg="If thresholds FAILED: System needs optimization for production" source=console
+
+
+  █ THRESHOLDS
+
+    auth_errors
+    ✓ 'count<10' count=0
+
+    consolidation_error_rate{test_type:peak_consolidations}
+    ✓ 'rate<=0.05' rate=0.00%
+
+    consolidation_failures
+    ✓ 'count<150' count=0
+
+    http_req_duration{test_type:peak_consolidations}
+    ✓ 'p(95)<3000' p(95)=12.4ms
+
+    http_req_duration{test_type:transaction_resilience}
+    ✓ 'p(95)<2000' p(95)=27.07ms
+
+    http_req_failed
+    ✓ 'rate<0.1' rate=0.02%
+
+    transaction_failures
+    ✓ 'count<10' count=0
+
+    transaction_service_availability{test_type:transaction_resilience}
+    ✓ 'rate>=0.98' rate=100.00%
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......: 76206   281.126002/s
+    checks_succeeded...: 100.00% 76206 out of 76206
+    checks_failed......: 0.00%   0 out of 76206
+
+    ✓ auth successful
+    ✓ auth has token
+    ✓ transaction responds
+    ✓ transaction created
+    ✓ transaction within SLA
+    ✓ transaction not auth error
+    ✓ transaction returns valid data
+    ✓ consolidation responds
+    ✓ consolidation success or not found
+    ✓ consolidation within SLA
+    ✓ consolidation not auth error
+    ✓ consolidation valid JSON on 200
+
+    CUSTOM
+    auth_errors..............................: 0       0/s
+    consolidation_error_rate.................: 0.00%   0 out of 4671
+      { test_type:peak_consolidations }......: 0.00%   0 out of 2721
+    consolidation_failures...................: 0       0/s
+    consolidation_latency....................: avg=5.52882   min=1.722375 med=2.673208 max=536.572666  p(90)=7.088166  p(95)=11.071437
+    transaction_failures.....................: 0       0/s
+    transaction_latency......................: avg=13.818051 min=3.5055   med=5.593291 max=1315.537834 p(90)=17.592075 p(95)=27.075683
+    transaction_service_availability.........: 100.00% 10555 out of 10555
+      { test_type:transaction_resilience }...: 100.00% 2774 out of 2774
+
+    HTTP
+    http_req_duration........................: avg=11.34ms   min=1.72ms   med=5.21ms   max=1.31s       p(90)=15.05ms   p(95)=23.63ms
+      { expected_response:true }.............: avg=11.31ms   min=1.72ms   med=5.21ms   max=1.31s       p(90)=15ms      p(95)=23.58ms
+      { test_type:peak_consolidations }......: avg=5.62ms    min=1.72ms   med=2.67ms   max=536.57ms    p(90)=7.33ms    p(95)=12.4ms
+      { test_type:transaction_resilience }...: avg=13.82ms   min=3.5ms    med=5.59ms   max=1.31s       p(90)=17.64ms   p(95)=27.07ms
+    http_req_failed..........................: 0.02%   4 out of 15267
+    http_reqs................................: 15267   56.320377/s
+
+    EXECUTION
+    dropped_iterations.......................: 4       0.014756/s
+    iteration_duration.......................: avg=261.52ms  min=102.76ms med=258.15ms max=1.67s       p(90)=380.32ms  p(95)=395.05ms
+    iterations...............................: 15226   56.169127/s
+    vus......................................: 3       min=3              max=24
+    vus_max..................................: 38      min=35             max=38
+
+    NETWORK
+    data_received............................: 6.7 MB  25 kB/s
+    data_sent................................: 17 MB   62 kB/s
+
+
+
+
+running (4m31.1s), 00/38 VUs, 15226 complete and 0 interrupted iterations
+peak_consolidations    ✓ [ 100% ] 00/33 VUs  3m0s  50.00 iters/s
+transaction_resilience ✓ [ 100% ] 5 VUs      3m30s
+post_peak_validation   ✓ [ 100% ] 10 VUs     1m0s

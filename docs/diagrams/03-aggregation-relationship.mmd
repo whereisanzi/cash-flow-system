@@ -1,0 +1,29 @@
+erDiagram
+  MERCHANT ||--o{ TRANSACTION : "realiza"
+  MERCHANT ||--o{ DAILY_CONSOLIDATION : "agrega por dia"
+  TRANSACTION }o--|| DAILY_CONSOLIDATION : "contribui para (por MerchantId+Date)"
+
+  MERCHANT {
+    STRING MerchantId PK
+  }
+
+  TRANSACTION {
+    GUID Id PK
+    STRING MerchantId FK
+    INT Type
+    DECIMAL Amount
+    TIMESTAMP DateTime
+  }
+
+  DAILY_CONSOLIDATION {
+    GUID Id PK
+    STRING MerchantId FK
+    DATE Date
+    DECIMAL TotalDebits
+    DECIMAL TotalCredits
+    DECIMAL NetBalance
+    INT TransactionCount
+  }
+
+%% Nota: A consistência entre TRANSACTION e DAILY_CONSOLIDATION é eventual.
+%% O consumidor atualiza a projeção por MerchantId+Date a partir de eventos RabbitMQ.

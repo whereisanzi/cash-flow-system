@@ -1,0 +1,136 @@
+graph TB
+  subgraph ClientLayer[Client Layer]
+    WebApp[Web Applications]
+    Mobile[Mobile Apps]
+    K6[K6 Load Tests]
+    Postman[Postman/API Tools]
+  end
+
+  subgraph APIGateway[API Gateway Layer - SINGLE ENTRY POINT]
+    KrakenD[KrakenD<br/>• JWT Validation<br/>• Rate Limiting<br/>• CORS<br/>• Routing]
+  end
+
+  subgraph SecurityLayer[Security & Auth Layer]
+    Keycloak[Keycloak<br/>• OAuth2/OIDC<br/>• JWT Issuer<br/>• User Management<br/>• Realm: cash-flow]
+  end
+
+  subgraph BusinessServices[Business Services Layer - PRIVATE]
+    subgraph TxService[Transactions Service]
+      subgraph TxPattern[Flows Pattern Architecture]
+        TxHandler[Handlers<br/>HTTP Endpoints<br/>Minimal APIs]
+        TxFlow[Flows<br/>Business Orchestration<br/>Core Use Cases]
+        TxLogic[Logics<br/>Domain Validation<br/>Business Rules]
+        TxAdapter[Adapters<br/>DTO ↔ Domain<br/>Event Mapping]
+        TxGateway[Gateways<br/>Infrastructure Access<br/>DB + Queue]
+        TxProtocol[Protocols<br/>IDatabaseProtocol<br/>IQueueProtocol]
+      end
+    end
+
+    subgraph CoServiceLayer[Consolidations Service]
+      subgraph CoPattern[Repository + Background Consumer Pattern]
+        CoController[Controllers<br/>HTTP Endpoints<br/>Minimal APIs]
+        CoService[ConsolidationService<br/>Domain Logic<br/>Business Operations]
+        CoRepository[Repository<br/>Data Access Layer<br/>EF Core]
+        CoConsumer[Background Consumer<br/>TransactionEventConsumer<br/>RabbitMQ Integration]
+        CoModels[Models<br/>Domain Entities<br/>Daily Consolidation]
+      end
+    end
+  end
+
+  subgraph DataLayer[Data & Persistence Layer]
+    subgraph TxData[Transactions Data]
+      TxDB[(PostgreSQL<br/>Transactions DB<br/>Dapper Access)]
+      TxPool[PgBouncer<br/>Connection Pooling<br/>Performance Optimization]
+    end
+
+    subgraph CoData[Consolidations Data]
+      CoDB[(PostgreSQL<br/>Consolidations DB<br/>EF Core Access)]
+      CoPool[PgBouncer<br/>Connection Pooling<br/>Performance Optimization]
+    end
+
+    subgraph AuthData[Auth Data]
+      AuthDB[(PostgreSQL<br/>Keycloak DB<br/>User & Token Storage)]
+    end
+  end
+
+  subgraph MessagingLayer[Messaging & Events Layer]
+    subgraph RabbitMQ[RabbitMQ - Event-Driven Architecture]
+      Exchange[cash-flow-exchange<br/>Topic Exchange<br/>Event Routing]
+      Queue[consolidations-queue<br/>Event Processing<br/>Consumer Target]
+      DLX[cash-flow-dlx<br/>Dead Letter Exchange<br/>Error Handling]
+      DLQ[consolidations-queue-dlq<br/>Failed Messages<br/>Manual Review]
+    end
+  end
+
+  subgraph LoadBalancing[Load Balancing Layer]
+    HAProxyTx[HAProxy Transactions<br/>• Round Robin<br/>• Health Checks<br/>• Stats :8181]
+    HAProxyCo[HAProxy Consolidations<br/>• Round Robin<br/>• Health Checks<br/>• Stats :8282]
+  end
+
+  subgraph Observability[Observability & Monitoring Layer]
+    Prometheus[Prometheus<br/>• Metrics Collection<br/>• SLO/SLA Rules<br/>• Alert Manager]
+    Grafana[Grafana<br/>• Dashboards<br/>• Visualization<br/>• Alerting]
+    Exporters[Various Exporters<br/>• PgBouncer<br/>• Node<br/>• cAdvisor]
+  end
+
+  %% Client connections
+  ClientLayer --> KrakenD
+
+  %% Security flow
+  KrakenD -.->|OAuth2 Flow| Keycloak
+  Keycloak --> AuthDB
+
+  %% Business service routing
+  KrakenD --> HAProxyTx
+  KrakenD --> HAProxyCo
+  HAProxyTx --> TxHandler
+  HAProxyCo --> CoController
+
+  %% Transactions Flow Pattern
+  TxHandler --> TxFlow
+  TxFlow --> TxLogic
+  TxFlow --> TxAdapter
+  TxFlow --> TxGateway
+  TxGateway --> TxProtocol
+  TxProtocol --> TxPool --> TxDB
+  TxProtocol --> Exchange
+
+  %% Consolidations Repository Pattern
+  CoController --> CoService
+  CoService --> CoRepository
+  CoRepository --> CoPool --> CoDB
+  CoConsumer --> Queue
+  CoConsumer --> CoService
+
+  %% Event flow
+  Exchange --> Queue
+  Queue -.->|Failed Messages| DLX --> DLQ
+
+  %% Monitoring
+  Prometheus --> Exporters
+  Prometheus -.->|Scrape| TxService & CoService & KrakenD
+  Grafana --> Prometheus
+
+  %% Pattern Documentation
+  TxFlow -.->|Orchestrates| TxLogic & TxAdapter & TxGateway
+  CoConsumer -.->|Background Processing| CoService
+  CoService -.->|Domain Operations| CoRepository
+
+  %% Styling
+  classDef client fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef gateway fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+  classDef security fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef business fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef data fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
+  classDef messaging fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+  classDef balancing fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef monitoring fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+
+  class WebApp,Mobile,K6,Postman client
+  class KrakenD gateway
+  class Keycloak,AuthDB security
+  class TxHandler,TxFlow,TxLogic,TxAdapter,TxGateway,TxProtocol,CoController,CoService,CoRepository,CoConsumer,CoModels business
+  class TxDB,CoDB,TxPool,CoPool data
+  class Exchange,Queue,DLX,DLQ messaging
+  class HAProxyTx,HAProxyCo balancing
+  class Prometheus,Grafana,Exporters monitoring

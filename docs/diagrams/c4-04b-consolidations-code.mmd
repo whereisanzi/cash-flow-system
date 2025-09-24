@@ -1,0 +1,163 @@
+classDiagram
+  %% Controller Layer
+  class ConsolidationController {
+    +GetDailyConsolidationAsync(merchantId: string, date: DateOnly) Task<IResult>
+    +GetHealthAsync() IResult
+    -_consolidationService: IConsolidationService
+  }
+
+  %% Application Service Layer
+  class IConsolidationService {
+    <<interface>>
+    +GetDailyConsolidationAsync(merchantId: string, date: DateOnly) Task<DailyConsolidation>
+    +CreateOrUpdateDailyConsolidationAsync(transactionEvent: TransactionCreatedEvent) Task
+  }
+
+  class ConsolidationService {
+    +GetDailyConsolidationAsync(merchantId: string, date: DateOnly) Task<DailyConsolidation>
+    +CreateOrUpdateDailyConsolidationAsync(transactionEvent: TransactionCreatedEvent) Task
+    -_repository: IDailyConsolidationRepository
+    -_logger: ILogger
+    -CalculateNewTotals(existing: DailyConsolidation, transaction: TransactionCreatedEvent) DailyConsolidation
+  }
+
+  %% Background Consumer
+  class TransactionEventConsumer {
+    <<BackgroundService>>
+    +ExecuteAsync(cancellationToken: CancellationToken) Task
+    +StartAsync(cancellationToken: CancellationToken) Task
+    +StopAsync(cancellationToken: CancellationToken) Task
+    -_consolidationService: IConsolidationService
+    -_connection: IConnection
+    -_channel: IModel
+    -_logger: ILogger
+    -HandleMessage(body: ReadOnlyMemory<byte>) Task
+    -HandleProcessingError(ex: Exception, eventData: TransactionCreatedEvent) Task
+  }
+
+  %% Repository Layer
+  class IDailyConsolidationRepository {
+    <<interface>>
+    +GetByMerchantAndDateAsync(merchantId: string, date: DateOnly) Task<DailyConsolidation>
+    +AddAsync(consolidation: DailyConsolidation) Task
+    +UpdateAsync(consolidation: DailyConsolidation) Task
+    +SaveChangesAsync() Task<int>
+  }
+
+  class DailyConsolidationRepository {
+    +GetByMerchantAndDateAsync(merchantId: string, date: DateOnly) Task<DailyConsolidation>
+    +AddAsync(consolidation: DailyConsolidation) Task
+    +UpdateAsync(consolidation: DailyConsolidation) Task
+    +SaveChangesAsync() Task<int>
+    -_context: ConsolidationsDbContext
+  }
+
+  %% Data Context
+  class ConsolidationsDbContext {
+    <<DbContext>>
+    +DailyConsolidations: DbSet<DailyConsolidation>
+    +OnModelCreating(modelBuilder: ModelBuilder) void
+    +SaveChangesAsync(cancellationToken: CancellationToken) Task<int>
+  }
+
+  %% Domain Models
+  class DailyConsolidation {
+    +Id: Guid
+    +MerchantId: string
+    +Date: DateOnly
+    +TotalDebits: decimal
+    +TotalCredits: decimal
+    +NetBalance: decimal
+    +TransactionCount: int
+    +LastUpdated: DateTime
+    +UpdateTotals(amount: decimal, type: TransactionType) void
+    +CalculateNetBalance() void
+  }
+
+  class TransactionType {
+    <<enumeration>>
+    Debit = 0
+    Credit = 1
+  }
+
+  %% DTOs and Events
+  class DailyConsolidationResponse {
+    +MerchantId: string
+    +Date: string
+    +TotalDebits: decimal
+    +TotalCredits: decimal
+    +NetBalance: decimal
+    +TransactionCount: int
+    +LastUpdated: DateTime
+  }
+
+  class TransactionCreatedEvent {
+    +Id: Guid
+    +MerchantId: string
+    +Type: int
+    +Amount: decimal
+    +DateTime: DateTime
+    +CreatedAt: DateTime
+  }
+
+  %% Error Handling
+  class DeadLetterQueueHandler {
+    +HandleFailedMessage(eventData: TransactionCreatedEvent, exception: Exception) Task
+    +SendToDLQ(message: string, error: string) Task
+    -_logger: ILogger
+    -_channel: IModel
+  }
+
+  %% Configuration
+  class RabbitMQSettings {
+    +ConnectionString: string
+    +ExchangeName: string
+    +QueueName: string
+    +RoutingKey: string
+    +DLXName: string
+    +DLQName: string
+  }
+
+  %% EF Core Configuration
+  class DailyConsolidationConfiguration {
+    <<IEntityTypeConfiguration>>
+    +Configure(builder: EntityTypeBuilder<DailyConsolidation>) void
+  }
+
+  %% Relationships
+  ConsolidationController --> IConsolidationService : uses
+  ConsolidationController --> DailyConsolidationResponse : returns
+
+  IConsolidationService <|.. ConsolidationService : implements
+  ConsolidationService --> IDailyConsolidationRepository : uses
+  ConsolidationService --> DailyConsolidation : manages
+  ConsolidationService --> TransactionCreatedEvent : processes
+
+  TransactionEventConsumer --> IConsolidationService : calls
+  TransactionEventConsumer --> TransactionCreatedEvent : receives
+  TransactionEventConsumer --> DeadLetterQueueHandler : error handling
+  TransactionEventConsumer --> RabbitMQSettings : configured by
+
+  IDailyConsolidationRepository <|.. DailyConsolidationRepository : implements
+  DailyConsolidationRepository --> ConsolidationsDbContext : uses
+  DailyConsolidationRepository --> DailyConsolidation : persists
+
+  ConsolidationsDbContext --> DailyConsolidation : maps
+  ConsolidationsDbContext --> DailyConsolidationConfiguration : configured by
+
+  DailyConsolidation --> TransactionType : uses
+  DailyConsolidationResponse --> DailyConsolidation : mapped from
+
+  DeadLetterQueueHandler --> RabbitMQSettings : configured by
+
+  %% Styling
+  classDef controller fill:#e8f5e8,stroke:#2e7d2,stroke-width:2px
+  classDef service fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef consumer fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef repository fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef context fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+  classDef domain fill:#e8eaf6,stroke:#3f51b5,stroke-width:3px
+  classDef dto fill:#fce4ec,stroke:#e91e63,stroke-width:1px
+  classDef error fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+  classDef config fill:#f3e5f5,stroke:#7b1fa2,stroke-width:1px
+

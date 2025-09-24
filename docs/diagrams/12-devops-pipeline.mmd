@@ -1,0 +1,149 @@
+graph TB
+  subgraph Development[Development Workflow]
+    Developer[Developer Workstation]
+    IDE[VS Code / Rider<br/>Local Development]
+    Git[Git Repository<br/>Feature Branches]
+  end
+
+  subgraph LocalDev[Local Development Environment]
+    LocalDocker[Docker Compose<br/>Full Stack Locally]
+    LocalTest[Local Testing<br/>make test<br/>make load-test-quick]
+    LocalDebug[Local Debugging<br/>Services + Observability]
+  end
+
+  subgraph CI[Continuous Integration Pipeline]
+    subgraph BuildStage[Build Stage]
+      Checkout[Code Checkout]
+      DotnetBuild[.NET Build<br/>• Restore packages<br/>• Compile projects<br/>• Validate syntax]
+      DockerBuild[Docker Images Build<br/>• TransactionsApi<br/>• ConsolidationsApi<br/>• Multi-stage builds]
+    end
+
+    subgraph TestStage[Test Stage]
+      UnitTests[Unit Tests<br/>• TransactionsApi.Tests<br/>• ConsolidationsApi.Tests<br/>• Coverage reports]
+
+      IntegrationSetup[Integration Test Setup<br/>• Docker Compose up<br/>• Wait for health checks<br/>• Database migrations]
+
+      LoadTests[Load & Performance Tests<br/>• make load-test-health<br/>• make load-test-peak<br/>• make load-test-independence<br/>• make load-test-consistency]
+
+      TestCleanup[Test Environment Cleanup<br/>• Docker compose down<br/>• Clean volumes<br/>• Reset state]
+    end
+
+    subgraph QualityGate[Quality Gates]
+      CodeQuality[Code Quality<br/>• SonarQube analysis<br/>• Code coverage ≥80%<br/>• Security scanning]
+
+      NFRValidation[NFR Validation<br/>• Peak load: 50 RPS ≤5% error<br/>• Independence: ≥95% availability<br/>• Consistency: ≥95% eventual]
+
+      SecurityScan[Security Scanning<br/>• Container vulnerability scan<br/>• Dependency audit<br/>• Secret detection]
+    end
+  end
+
+  subgraph ArtifactManagement[Artifact & Configuration Management]
+    subgraph ContainerRegistry[Container Registry]
+      TxImage[transactions-api:tag]
+      CoImage[consolidations-api:tag]
+      MigrationImages[Migration Images<br/>• transactions-migrator<br/>• consolidations-migrator]
+    end
+
+    subgraph ConfigManagement[Configuration Management]
+      EnvConfigs[Environment Configs<br/>• Development<br/>• Staging<br/>• Production]
+      Secrets[Secrets Management<br/>• Database credentials<br/>• Service keys<br/>• JWT secrets]
+      NetworkConfigs[Network Configurations<br/>• Security groups<br/>• Load balancer rules<br/>• DNS records]
+    end
+  end
+
+  subgraph Deployment[Deployment Pipeline]
+    subgraph StagingDeploy[Staging Deployment]
+      StagingInfra[Staging Infrastructure<br/>• Docker Swarm / K8s<br/>• Similar to production<br/>• Reduced scale]
+      StagingTests[Staging Tests<br/>• End-to-end testing<br/>• User acceptance tests<br/>• Performance validation]
+      StagingMonitoring[Staging Monitoring<br/>• Health checks<br/>• Metrics validation<br/>• Alert testing]
+    end
+
+    subgraph ProductionDeploy[Production Deployment]
+      BlueGreen[Blue-Green Deployment<br/>• Zero downtime<br/>• Traffic switching<br/>• Rollback capability]
+
+      DatabaseMigration[Database Migrations<br/>• Forward-only migrations<br/>• Backup before migration<br/>• Migration validation]
+
+      ServiceDeployment[Service Deployment<br/>• Rolling updates<br/>• Health check validation<br/>• Service mesh integration]
+    end
+  end
+
+  subgraph Monitoring[Production Monitoring & Feedback]
+    ProductionMetrics[Production Metrics<br/>• SLO/SLA monitoring<br/>• Business KPIs<br/>• Performance metrics]
+
+    AlertingSystem[Alerting System<br/>• PagerDuty integration<br/>• Slack notifications<br/>• On-call rotations]
+
+    LogAggregation[Log Aggregation<br/>• Structured logging<br/>• Error tracking<br/>• Audit trails]
+  end
+
+  subgraph Infrastructure[Infrastructure as Code]
+    Terraform[Terraform<br/>• Cloud resources<br/>• Network configuration<br/>• Security policies]
+
+    Ansible[Ansible<br/>• Configuration management<br/>• Service provisioning<br/>• System hardening]
+
+    Kubernetes[Kubernetes<br/>• Container orchestration<br/>• Service discovery<br/>• Auto-scaling]
+  end
+
+  %% Development flow
+  Developer --> IDE
+  IDE --> Git
+  Git --> LocalDocker
+  LocalDocker --> LocalTest
+  LocalTest --> LocalDebug
+
+  %% CI trigger
+  Git -.->|Push/PR| Checkout
+  Checkout --> DotnetBuild --> DockerBuild
+  DockerBuild --> UnitTests
+  UnitTests --> IntegrationSetup --> LoadTests --> TestCleanup
+
+  %% Quality gates
+  TestCleanup --> CodeQuality & NFRValidation & SecurityScan
+
+  %% Artifact creation
+  CodeQuality -.->|Pass| ContainerRegistry
+  DockerBuild --> TxImage & CoImage & MigrationImages
+  ConfigManagement --> EnvConfigs & Secrets & NetworkConfigs
+
+  %% Staging deployment
+  ContainerRegistry --> StagingInfra
+  EnvConfigs --> StagingInfra
+  StagingInfra --> StagingTests --> StagingMonitoring
+
+  %% Production deployment
+  StagingMonitoring -.->|Approval| BlueGreen
+  DatabaseMigration --> ServiceDeployment
+  BlueGreen --> ServiceDeployment
+  ContainerRegistry --> ServiceDeployment
+
+  %% Infrastructure management
+  Terraform --> StagingInfra & BlueGreen
+  Ansible --> ServiceDeployment
+  Kubernetes --> ServiceDeployment
+
+  %% Monitoring feedback
+  ServiceDeployment --> ProductionMetrics
+  ProductionMetrics --> AlertingSystem & LogAggregation
+
+  %% Feedback loops
+  AlertingSystem -.->|Issues| Developer
+  LogAggregation -.->|Debug info| Developer
+  ProductionMetrics -.->|Performance data| LoadTests
+
+  %% Environment promotion
+  LocalTest -.->|Promote config| EnvConfigs
+  StagingTests -.->|Validate deployment| ProductionDeploy
+
+  %% Styling
+  classDef development fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+  classDef ci fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef artifacts fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef deployment fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef monitoring fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
+  classDef infrastructure fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+
+  class Developer,IDE,Git,LocalDocker,LocalTest,LocalDebug development
+  class Checkout,DotnetBuild,DockerBuild,UnitTests,IntegrationSetup,LoadTests,TestCleanup,CodeQuality,NFRValidation,SecurityScan ci
+  class TxImage,CoImage,MigrationImages,EnvConfigs,Secrets,NetworkConfigs artifacts
+  class StagingInfra,StagingTests,StagingMonitoring,BlueGreen,DatabaseMigration,ServiceDeployment deployment
+  class ProductionMetrics,AlertingSystem,LogAggregation monitoring
+  class Terraform,Ansible,Kubernetes infrastructure

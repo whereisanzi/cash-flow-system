@@ -1,0 +1,76 @@
+time="2025-09-24T05:09:12Z" level=info source=console
+time="2025-09-24T05:09:12Z" level=info msg="=== Consistency Test Results ===" source=console
+time="2025-09-24T05:09:12Z" level=info msg="Duration: 187.2s" source=console
+time="2025-09-24T05:09:12Z" level=info source=console
+time="2025-09-24T05:09:12Z" level=info msg="Consistency Metrics:" source=console
+time="2025-09-24T05:09:12Z" level=info msg="- Eventual Consistency: Rate ≥ 95%" source=console
+time="2025-09-24T05:09:12Z" level=info msg="- Read Consistency: Rate ≥ 98%" source=console
+time="2025-09-24T05:09:12Z" level=info msg="- Causal Consistency: Rate ≥ 90%" source=console
+time="2025-09-24T05:09:12Z" level=info msg="- Convergence Time: P95 < 30s" source=console
+time="2025-09-24T05:09:12Z" level=info source=console
+time="2025-09-24T05:09:12Z" level=info msg="If all thresholds PASS: System maintains acceptable consistency levels" source=console
+time="2025-09-24T05:09:12Z" level=info msg="If thresholds FAIL: Consistency mechanisms need improvement" source=console
+time="2025-09-24T05:09:12Z" level=info source=console
+
+
+  █ THRESHOLDS
+
+    auth_errors
+    ✓ 'count<5' count=0
+
+    causal_consistency_rate
+    ✓ 'rate>=0.90' rate=100.00%
+
+    consistency_violations
+    ✓ 'count<10' count=0
+
+    convergence_time_ms
+    ✓ 'p(95)<40000' p(95)=38079.6
+
+    eventual_consistency_rate
+    ✓ 'rate>=0.95' rate=100.00%
+
+    read_consistency_rate
+    ✓ 'rate>=0.98' rate=100.00%
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......: 50      0.267049/s
+    checks_succeeded...: 100.00% 50 out of 50
+    checks_failed......: 0.00%   0 out of 50
+
+    ✓ transaction created successfully
+    ✓ causal transaction created
+    ✓ read consistency maintained
+
+    CUSTOM
+    auth_errors....................: 0       0/s
+    causal_consistency_rate........: 100.00% 1 out of 1
+    consistency_violations.........: 0       0/s
+    convergence_time_ms............: avg=20042.333333 min=0      med=20040  max=40082   p(90)=36077.2 p(95)=38079.6
+    eventual_consistency_rate......: 100.00% 9 out of 9
+    read_consistency_rate..........: 100.00% 37 out of 37
+
+    HTTP
+    http_req_duration..............: avg=10.59ms      min=3.25ms med=7.97ms max=63.97ms p(90)=18.35ms p(95)=24.53ms
+      { expected_response:true }...: avg=10.59ms      min=3.25ms med=7.97ms max=63.97ms p(90)=18.35ms p(95)=24.53ms
+    http_req_failed................: 0.00%   0 out of 140
+    http_reqs......................: 140     0.747736/s
+
+    EXECUTION
+    iteration_duration.............: avg=8.45s        min=4.69s  med=6.9s   max=1m13s   p(90)=8.33s   p(95)=8.43s
+    iterations.....................: 38      0.202957/s
+    vus............................: 1       min=1        max=3
+    vus_max........................: 3       min=3        max=3
+
+    NETWORK
+    data_received..................: 65 kB   345 B/s
+    data_sent......................: 142 kB  761 B/s
+
+
+
+
+running (3m07.2s), 0/3 VUs, 38 complete and 0 interrupted iterations
+consistency_validation ✓ [ 100% ] 1 VUs  1m13.4s/5m0s  1/1 iters, 1 per VU
+read_consistency_test  ✓ [ 100% ] 2 VUs  2m0s

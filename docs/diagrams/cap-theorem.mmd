@@ -1,0 +1,106 @@
+graph TB
+  subgraph CAPTheorem[CAP Theorem - Cash Flow System Analysis]
+    subgraph CAPTriangle[CAP Triangle - Choose 2 of 3]
+      C[Consistency<br/>All nodes see the same data<br/>at the same time]
+      A[Availability<br/>System remains operational<br/>even with node failures]
+      P[Partition Tolerance<br/>System continues despite<br/>network partitions]
+
+      C -.->|Cannot guarantee<br/>all three| A
+      A -.->|simultaneously| P
+      P -.->|Choose 2| C
+    end
+  end
+
+  subgraph SystemChoice[Cash Flow System Choice: AP - Availability & Partition Tolerance]
+    subgraph APChoice[Our Design Decision]
+      APReasoning[High Availability + Network Resilience<br/>✅ Transactions API always available<br/>✅ Consolidations API independent<br/>✅ Services survive network issues<br/>❌ Eventual consistency between services]
+    end
+
+    subgraph TradeOffs[Trade-offs Made]
+      EventualConsistency[Eventual Consistency<br/>• Transactions persist immediately<br/>• Consolidations update asynchronously<br/>• Brief inconsistency window acceptable<br/>• Business impact: minimal delay in reports]
+    end
+  end
+
+  subgraph ImplementationDetails[Implementation Details]
+    subgraph ConsistencyLevel[Consistency Levels Applied]
+      StrongConsistency[Strong Consistency<br/>WITHIN Each Service<br/>📍 Transactions DB ACID<br/>📍 Consolidations DB ACID<br/>📍 Single service boundaries]
+
+      EventualConsistencyImpl[Eventual Consistency<br/>BETWEEN Services<br/>📡 RabbitMQ async messaging<br/>📡 Event-driven updates<br/>📡 DLQ for failed processing<br/>📡 Measured convergence time]
+    end
+
+    subgraph AvailabilityMeasures[Availability Measures]
+      ServiceIndependence[Service Independence<br/>🔄 Transactions work without Consolidations<br/>🔄 Multiple instances per service<br/>🔄 HAProxy load balancing<br/>🔄 Circuit breaker patterns]
+
+      PartitionHandling[Partition Tolerance<br/>🌐 Services in separate networks<br/>🌐 Message queue persistence<br/>🌐 Retry mechanisms<br/>🌐 Graceful degradation]
+    end
+  end
+
+  subgraph Measurements[Real-World Measurements]
+    subgraph ConsistencyMetrics[Consistency Metrics from k6 tests]
+      EventualConsistencyRate[Eventual Consistency Rate<br/>✅ 100% achieved<br/>Target: ≥95%]
+      ReadConsistencyRate[Read Consistency Rate<br/>✅ 100% achieved<br/>Target: ≥98%]
+      CausalConsistencyRate[Causal Consistency Rate<br/>✅ 100% achieved<br/>Target: ≥90%]
+      ConvergenceTime[Convergence Time<br/>✅ p95: 38.08s<br/>Target: <40s]
+    end
+
+    subgraph AvailabilityMetrics[Availability Metrics from k6 tests]
+      TransactionAvailability[Transaction Service Availability<br/>✅ 100% during stress<br/>Target: ≥95%]
+      PeakLoadHandling[Peak Load Handling<br/>✅ 50+ RPS with 0% errors<br/>Target: ≤5% error rate]
+      IndependenceValidation[Service Independence<br/>✅ 0 violations detected<br/>Target: <3 violations]
+    end
+  end
+
+  subgraph BusinessImpact[Business Impact Analysis]
+    subgraph Benefits[Benefits of AP Choice]
+      HighAvailability[High Availability<br/>💰 Revenue protection<br/>💰 Customer satisfaction<br/>💰 24/7 transaction processing<br/>💰 No single point of failure]
+
+      Scalability[Horizontal Scalability<br/>📈 Independent service scaling<br/>📈 Traffic burst handling<br/>📈 Geographic distribution ready<br/>📈 Cost-effective growth]
+    end
+
+    subgraph AcceptableTradeoffs[Acceptable Trade-offs]
+      ReportingDelay[Brief Reporting Delays<br/>⏰ Max 40s consolidation delay<br/>⏰ Real-time transactions preserved<br/>⏰ Business critical path unaffected<br/>⏰ Monitoring alerts configured]
+
+      EventualConvergence[Guaranteed Convergence<br/>🎯 All events eventually processed<br/>🎯 DLQ prevents data loss<br/>🎯 Manual recovery procedures<br/>🎯 Audit trail maintained]
+    end
+  end
+
+  subgraph AlternativeScenarios[Alternative CAP Choices Analysis]
+    subgraph CPChoice[CP Choice - Consistency & Partition Tolerance]
+      CPTradeoffs[❌ Would sacrifice Availability<br/>• Transactions might fail during network issues<br/>• Strong consistency between services<br/>• Synchronous processing required<br/>• Single points of failure]
+    end
+
+    subgraph CAChoice[CA Choice - Consistency & Availability]
+      CATradeoffs[❌ Would sacrifice Partition Tolerance<br/>• System fails during network partitions<br/>• Tight coupling between services<br/>• Not suitable for distributed architecture<br/>• Poor scalability characteristics]
+    end
+  end
+
+  %% Relationships
+  C --> StrongConsistency
+  A --> ServiceIndependence
+  P --> PartitionHandling
+
+  APChoice --> EventualConsistency
+  EventualConsistency --> EventualConsistencyImpl
+
+  EventualConsistencyImpl --> ConsistencyMetrics
+  ServiceIndependence --> AvailabilityMetrics
+
+  HighAvailability --> TransactionAvailability
+  EventualConvergence --> ConvergenceTime
+
+  %% Styling
+  classDef capConcept fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+  classDef ourChoice fill:#e8f5e8,stroke:#2e7d32,stroke-width:4px
+  classDef implementation fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef metrics fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef business fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+  classDef alternative fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef rejected fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+
+  class C,A,P capConcept
+  class APChoice,APReasoning ourChoice
+  class StrongConsistency,EventualConsistencyImpl,ServiceIndependence,PartitionHandling implementation
+  class ConsistencyMetrics,AvailabilityMetrics,EventualConsistencyRate,ReadConsistencyRate,CausalConsistencyRate,ConvergenceTime,TransactionAvailability,PeakLoadHandling,IndependenceValidation metrics
+  class Benefits,HighAvailability,Scalability,AcceptableTradeoffs,ReportingDelay,EventualConvergence business
+  class AlternativeScenarios alternative
+  class CPChoice,CAChoice,CPTradeoffs,CATradeoffs rejected

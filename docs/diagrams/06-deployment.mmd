@@ -1,0 +1,58 @@
+flowchart LR
+  subgraph Public[public_network - ONLY KrakenD exposed]
+    G[KrakenD - Gateway<br/>:8000 public]
+    P[Prometheus<br/>:9090 public]
+    Gr[Grafana<br/>:3000 public]
+  end
+
+  subgraph Keycloak[keycloak_network - PRIVATE]
+    KC[Keycloak<br/>:8080 local only]
+    KCDB[(Keycloak DB)]
+  end
+
+  subgraph TxNet[transactions_network - PRIVATE]
+    T1[Transactions API #1]
+    T2[Transactions API #2]
+    HTX[HAProxy TX<br/>:8181 local only]
+    PQT[PgBouncer TX]
+    DBT[(Postgres TX)]
+    MQT[RabbitMQ<br/>:15672 local only]
+  end
+
+  subgraph CoNet[consolidations_network - PRIVATE]
+    C1[Consolidations API #1]
+    C2[Consolidations API #2]
+    HCO[HAProxy CO<br/>:8282 local only]
+    PQC[PgBouncer CO]
+    DBC[(Postgres CO)]
+    MQC[RabbitMQ<br/>:15692 local only]
+  end
+
+  %% Multi-network connections
+  G -.->|keycloak_network| KC
+  G -.->|transactions_network| HTX
+  G -.->|consolidations_network| HCO
+
+  HTX --> T1 & T2
+  HCO --> C1 & C2
+
+  T1 & T2 --> PQT --> DBT
+  C1 & C2 --> PQC --> DBC
+  KC --> KCDB
+
+  %% RabbitMQ connections (same instance, different network IPs)
+  MQT -.->|same instance| MQC
+  T1 & T2 --> MQT
+  C1 & C2 --> MQC
+
+  %% Monitoring
+  P <-- scrape --> G & T1 & T2 & C1 & C2 & HTX & HCO & MQT
+  Gr --> P
+
+  classDef publicAccess fill:#e1f5fe,stroke:#01579b,stroke-width:3px
+  classDef privateOnly fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+  classDef localDebug fill:#fff3e0,stroke:#e65100,stroke-width:1px
+
+  class G,P,Gr publicAccess
+  class KC,T1,T2,C1,C2,PQT,PQC,DBT,DBC,KCDB privateOnly
+  class HTX,HCO,MQT,MQC localDebug

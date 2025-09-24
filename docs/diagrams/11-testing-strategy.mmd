@@ -1,0 +1,115 @@
+graph TB
+  subgraph TestPyramid[Test Strategy Pyramid]
+    subgraph UnitTests[Unit Tests Layer - FAST & ISOLATED]
+      TxUnitTests[TransactionsApi.Tests<br/>• TransactionAdapterTests<br/>• TransactionFlowTests<br/>• TransactionLogicTests<br/>✅ Complete orchestration coverage]
+
+      CoUnitTests[ConsolidationsApi.Tests<br/>• ConsolidationServiceTests<br/>• Background consumer tests<br/>✅ Domain logic validation]
+
+      UnitCoverage[Coverage Focus<br/>• Business Logic: 100%<br/>• Flows & Orchestration<br/>• Error Scenarios<br/>• Edge Cases]
+    end
+
+    subgraph LoadTests[Load & Performance Tests - REALISTIC]
+      K6Tests[K6 Test Suite<br/>Dockerized execution<br/>Network: cash-flow-system_public_network]
+
+      subgraph K6Scripts[K6 Test Scripts]
+        QuickTest[quick-test.js<br/>• Sanity check<br/>• Authentication flow<br/>• Payload validation<br/>• Balance verification]
+
+        PeakTest[peak-load-test.js<br/>• NFR: 50 RPS consolidations<br/>• ≤5% error threshold<br/>• Concurrent transactions<br/>• ~12 min duration]
+
+        IndependenceTest[independence-test.js<br/>• Service isolation<br/>• Transactions during CO failure<br/>• Availability ≥95%<br/>• ~6 min duration]
+
+        ConsistencyTest[consistency-test.js<br/>• Eventual consistency<br/>• Read consistency ≥98%<br/>• Causal consistency ≥90%<br/>• Convergence time p95 <40s]
+      end
+    end
+
+    subgraph Integration[Integration & System Tests]
+      SystemTests[End-to-End Scenarios<br/>• Full authentication flow<br/>• Transaction → Event → Consolidation<br/>• Cross-service communication]
+
+      ContractTests[API Contract Tests<br/>• OpenAPI/Swagger validation<br/>• Request/Response schemas<br/>• Error response formats]
+    end
+  end
+
+  subgraph TestInfrastructure[Test Infrastructure & Tools]
+    TestEnvironment[Test Environment<br/>• Docker Compose stack<br/>• Isolated networks<br/>• Fresh data per run]
+
+    TestData[Test Data Management<br/>• Database migrations<br/>• Seed data scripts<br/>• Clean slate approach]
+
+    TestOrchestration[Test Orchestration<br/>• Makefile commands<br/>• CI/CD integration<br/>• Parallel execution]
+  end
+
+  subgraph QualityGates[Quality Gates & Thresholds]
+    subgraph NFRValidation[NFR Validation Results]
+      PeakResults[Peak Load ✅<br/>• consolidation_error_rate ≤5%: 0.00%<br/>• transaction_availability ≥98%: 100%<br/>• p95 latency <3000ms: 12.4ms]
+
+      IndependenceResults[Independence ✅<br/>• transaction_availability ≥95%: 100%<br/>• independence_violations <3: 0<br/>• p95 latency <5000ms: 17ms]
+
+      ConsistencyResults[Consistency ✅<br/>• eventual_consistency ≥95%: 100%<br/>• read_consistency ≥98%: 100%<br/>• convergence_time p95 <40s: 38s]
+    end
+
+    subgraph ContinuousValidation[Continuous Validation]
+      HealthChecks[Health Checks<br/>• Service startup validation<br/>• Database connectivity<br/>• Message queue health]
+
+      SmokeTests[Smoke Tests<br/>• Critical path validation<br/>• Post-deployment checks<br/>• Quick feedback loop]
+    end
+  end
+
+  subgraph TestExecution[Test Execution Flow]
+    Developer[Developer]
+    CI[CI/CD Pipeline]
+    Production[Production Environment]
+
+    subgraph TestCommands[Makefile Test Commands]
+      MakeTest[make test<br/>Run unit tests locally]
+      MakeLoadHealth[make load-test-health<br/>Pre-test system validation]
+      MakeLoadQuick[make load-test-quick<br/>Sanity & auth check]
+      MakeLoadPeak[make load-test-peak<br/>Performance validation]
+      MakeLoadIndependence[make load-test-independence<br/>Resilience testing]
+      MakeLoadConsistency[make load-test-consistency<br/>Data consistency]
+    end
+  end
+
+  %% Test pyramid relationships
+  UnitTests -.->|Foundation| LoadTests
+  LoadTests -.->|System validation| Integration
+
+  %% Test infrastructure support
+  TestEnvironment --> UnitTests & LoadTests & Integration
+  TestData --> UnitTests & LoadTests & Integration
+  TestOrchestration --> TestCommands
+
+  %% Quality validation
+  LoadTests --> NFRValidation
+  Integration --> ContinuousValidation
+  NFRValidation --> QualityGates
+  ContinuousValidation --> QualityGates
+
+  %% Execution flow
+  Developer -.-> MakeTest & MakeLoadHealth & MakeLoadQuick
+  CI -.-> MakeLoadPeak & MakeLoadIndependence & MakeLoadConsistency
+  QualityGates -.->|Pass/Fail gates| CI
+  CI -.->|Deploy on success| Production
+
+  %% Test feedback loops
+  PeakResults -.->|SLO compliance| Production
+  IndependenceResults -.->|Resilience validation| Production
+  ConsistencyResults -.->|Data integrity assurance| Production
+
+  %% Monitoring integration
+  Production -.->|Real metrics validation| NFRValidation
+
+  %% Styling
+  classDef unit fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+  classDef load fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef integration fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef infrastructure fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef quality fill:#e8eaf6,stroke:#3f51b5,stroke-width:3px
+  classDef execution fill:#e0f2f1,stroke:#00796b,stroke-width:2px
+  classDef results fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+  class TxUnitTests,CoUnitTests,UnitCoverage unit
+  class K6Tests,QuickTest,PeakTest,IndependenceTest,ConsistencyTest load
+  class SystemTests,ContractTests integration
+  class TestEnvironment,TestData,TestOrchestration infrastructure
+  class QualityGates,ContinuousValidation quality
+  class Developer,CI,Production,TestCommands,MakeTest,MakeLoadHealth,MakeLoadQuick,MakeLoadPeak,MakeLoadIndependence,MakeLoadConsistency execution
+  class PeakResults,IndependenceResults,ConsistencyResults,HealthChecks,SmokeTests results

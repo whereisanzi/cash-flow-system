@@ -1,0 +1,76 @@
+graph TB
+  subgraph External[External Systems]
+    Gateway[API Gateway<br/>Routes requests]
+    Database[(PostgreSQL<br/>Transaction storage)]
+    RabbitMQ[RabbitMQ<br/>Event publishing]
+  end
+
+  subgraph TransactionsAPI[Transactions API - Flows Pattern]
+    subgraph Presentation[Presentation Layer]
+      Handler[Transaction Handler<br/>Minimal API Controller<br/>HTTP endpoints]
+    end
+
+    subgraph BusinessFlows[Business Flows Layer]
+      TxFlow[Transaction Flow<br/>Orchestration Logic<br/>Coordinates use case]
+    end
+
+    subgraph DomainLogic[Domain Logic Layer]
+      TxLogic[Transaction Logic<br/>Domain Validation<br/>Business rules]
+      TxAdapter[Transaction Adapter<br/>Mapping Layer<br/>DTO ↔ Domain ↔ Event]
+    end
+
+    subgraph Infrastructure[Infrastructure Layer]
+      DbGateway[Database Gateway<br/>Data Access<br/>Dapper operations]
+      QueueGateway[Queue Gateway<br/>Event Publishing<br/>RabbitMQ integration]
+      DbProtocol[Database Protocol<br/>IDatabaseProtocol<br/>Abstraction interface]
+      QueueProtocol[Queue Protocol<br/>IQueueProtocol<br/>Abstraction interface]
+    end
+
+    subgraph Models[Models & DTOs]
+      DTO[Transaction DTOs<br/>Request/Response<br/>API contracts]
+      DomainModel[Transaction Domain<br/>Core Entity<br/>Aggregate root]
+      Events[Domain Events<br/>TransactionCreatedEvent<br/>Event models]
+    end
+  end
+
+  %% External connections
+  Gateway --> Handler
+  DbProtocol --> Database
+  QueueProtocol --> RabbitMQ
+
+  %% Flow orchestration
+  Handler --> TxFlow
+  TxFlow --> TxLogic
+  TxFlow --> TxAdapter
+  TxFlow --> DbGateway
+  TxFlow --> QueueGateway
+
+  %% Domain interactions
+  TxLogic --> DomainModel
+  TxAdapter --> DTO
+  TxAdapter --> DomainModel
+  TxAdapter --> Events
+
+  %% Infrastructure protocols
+  DbGateway --> DbProtocol
+  QueueGateway --> QueueProtocol
+
+  %% Data flow
+  Handler --> DTO
+  DbGateway --> DomainModel
+  QueueGateway --> Events
+
+  %% Styling
+  classDef external fill:#f9f9f9,stroke:#333,stroke-width:2px
+  classDef presentation fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+  classDef flow fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+  classDef domain fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef infrastructure fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef models fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+
+  class Gateway,Database,RabbitMQ external
+  class Handler presentation
+  class TxFlow flow
+  class TxLogic,TxAdapter domain
+  class DbGateway,QueueGateway,DbProtocol,QueueProtocol infrastructure
+  class DTO,DomainModel,Events models

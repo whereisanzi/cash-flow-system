@@ -1,0 +1,86 @@
+graph TB
+  subgraph Internet[Internet - External Access]
+    Client[Client Applications<br/>Web, Mobile, k6, etc.]
+  end
+
+  subgraph PublicNetwork[public_network: 172.22.0.0/24]
+    subgraph PublicServices[ONLY 3 Services Exposed Publicly]
+      KrakenD[KrakenD API Gateway<br/>:8000 - MAIN ENTRY POINT]
+      Prometheus[Prometheus<br/>:9090 - Monitoring]
+      Grafana[Grafana<br/>:3000 - Dashboards]
+    end
+  end
+
+  subgraph PrivateNetworks[Private Networks - NO External Access]
+    subgraph KeycloakNet[keycloak_network: 172.24.0.0/24]
+      Keycloak[Keycloak<br/>172.24.0.11<br/>port 8080 - LOCAL ONLY]
+      KeycloakDB[(Keycloak DB<br/>172.24.0.10)]
+    end
+
+    subgraph TxNet[transactions_network: 172.20.0.0/24]
+      TxAPI1[Transactions API #1<br/>172.20.0.30]
+      TxAPI2[Transactions API #2<br/>172.20.0.31]
+      HAProxyTx[HAProxy TX<br/>172.20.0.51<br/>:8181 local stats only]
+      PgBouncerTx[PgBouncer TX<br/>172.20.0.15]
+      PostgresTx[(Postgres TX<br/>172.20.0.10)]
+      RabbitMQTx[RabbitMQ<br/>172.20.0.20<br/>:15672 local mgmt only]
+    end
+
+    subgraph CoNet[consolidations_network: 172.21.0.0/24]
+      CoAPI1[Consolidations API #1<br/>172.21.0.30]
+      CoAPI2[Consolidations API #2<br/>172.21.0.31]
+      HAProxyCo[HAProxy CO<br/>172.21.0.52<br/>:8282 local stats only]
+      PgBouncerCo[PgBouncer CO<br/>172.21.0.15]
+      PostgresCo[(Postgres CO<br/>172.21.0.10)]
+      RabbitMQCo[RabbitMQ<br/>172.21.0.20<br/>:15692 local metrics only]
+    end
+  end
+
+  %% External connections
+  Client -.->|HTTPS/HTTP<br/>Authentication Required| KrakenD
+  Client -.->|Read-only Monitoring| Prometheus
+  Client -.->|Dashboard Access| Grafana
+
+  %% KrakenD multi-network access (SECURE)
+  KrakenD -.->|keycloak_network<br/>OAuth2 validation| Keycloak
+  KrakenD -.->|transactions_network<br/>API calls| HAProxyTx
+  KrakenD -.->|consolidations_network<br/>API calls| HAProxyCo
+
+  %% Internal service flows
+  HAProxyTx --> TxAPI1 & TxAPI2
+  HAProxyCo --> CoAPI1 & CoAPI2
+  Keycloak --> KeycloakDB
+
+  TxAPI1 & TxAPI2 --> PgBouncerTx --> PostgresTx
+  CoAPI1 & CoAPI2 --> PgBouncerCo --> PostgresCo
+
+  TxAPI1 & TxAPI2 -.-> RabbitMQTx
+  CoAPI1 & CoAPI2 -.-> RabbitMQCo
+  RabbitMQTx -.->|Same instance<br/>Different network IPs| RabbitMQCo
+
+  %% Monitoring connections
+  Prometheus -.->|Scrape metrics| TxAPI1 & TxAPI2 & CoAPI1 & CoAPI2 & KrakenD
+  Grafana --> Prometheus
+
+  %% Security annotations
+  Client -.->|❌ BLOCKED<br/>No direct access| HAProxyTx
+  Client -.->|❌ BLOCKED<br/>No direct access| HAProxyCo
+  Client -.->|❌ BLOCKED<br/>No direct access| Keycloak
+  Client -.->|❌ BLOCKED<br/>No direct access| RabbitMQTx
+
+  %% Styling
+  classDef publicService fill:#e8f5e8,stroke:#2e7d32,stroke-width:4px
+  classDef privateService fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef database fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef blocked fill:#ffebee,stroke:#d32f2f,stroke-width:3px,stroke-dasharray: 5 5
+
+  class KrakenD,Prometheus,Grafana publicService
+  class Keycloak,TxAPI1,TxAPI2,CoAPI1,CoAPI2,HAProxyTx,HAProxyCo,PgBouncerTx,PgBouncerCo,RabbitMQTx,RabbitMQCo privateService
+  class KeycloakDB,PostgresTx,PostgresCo database
+
+  %% Network styling
+  style PublicNetwork fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+  style PrivateNetworks fill:#fce4ec,stroke:#c2185b,stroke-width:3px
+  style KeycloakNet fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  style TxNet fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
+  style CoNet fill:#e0f2f1,stroke:#00796b,stroke-width:2px

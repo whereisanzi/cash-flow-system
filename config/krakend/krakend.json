@@ -54,7 +54,7 @@
           "url_pattern": "/realms/cash-flow/protocol/openid-connect/token",
           "method": "POST",
           "host": [
-            "http://172.22.0.70:8080"
+            "http://keycloak:8080"
           ],
           "extra_config": {
             "backend/http": {
@@ -82,7 +82,7 @@
         "auth/validator": {
           "operation_debug": true,
           "alg": "RS256",
-          "jwk_url": "http://172.22.0.70:8080/realms/cash-flow/protocol/openid-connect/certs",
+          "jwk_url": "http://keycloak:8080/realms/cash-flow/protocol/openid-connect/certs",
           "disable_jwk_security": true
         },
         "qos/ratelimit/router": {
@@ -115,7 +115,7 @@
         "auth/validator": {
           "operation_debug": true,
           "alg": "RS256",
-          "jwk_url": "http://172.22.0.70:8080/realms/cash-flow/protocol/openid-connect/certs",
+          "jwk_url": "http://keycloak:8080/realms/cash-flow/protocol/openid-connect/certs",
           "disable_jwk_security": true
         },
         "qos/ratelimit/router": {

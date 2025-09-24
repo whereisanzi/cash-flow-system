@@ -1,0 +1,37 @@
+graph TB
+  subgraph Users[System Users]
+    Merchant[Merchant<br/>Business owner who needs<br/>to track daily cash flow]
+    Admin[System Administrator<br/>Manages system operations<br/>and monitoring]
+    Developer[Developer<br/>Develops and maintains<br/>the system]
+  end
+
+  subgraph CashFlowSystem[Cash Flow System]
+    System[Cash Flow System<br/>Manages merchant transactions and<br/>generates daily consolidations with<br/>high availability and performance]
+  end
+
+  subgraph ExternalSystems[External Systems]
+    Keycloak[Keycloak Identity Provider<br/>Handles authentication and<br/>authorization using OAuth2/JWT]
+    Monitoring[Monitoring Stack<br/>Prometheus + Grafana for<br/>observability, metrics, and alerting]
+    LoadTesting[Load Testing Tools<br/>k6 for performance validation<br/>and NFR compliance]
+  end
+
+  %% User interactions with main system
+  Merchant -.->|Records transactions<br/>Views consolidations<br/>HTTPS/REST| System
+  Admin -.->|Monitors system health<br/>HTTPS/Web UI| System
+  Admin -.->|Views dashboards<br/>HTTPS/Web UI| Monitoring
+  Developer -.->|Deploys and maintains<br/>CI/CD Pipeline| System
+  Developer -.->|Validates NFRs<br/>Automated tests| LoadTesting
+
+  %% System integrations
+  System -.->|Validates JWT tokens<br/>HTTP/OAuth2| Keycloak
+  System -.->|Exposes metrics<br/>HTTP/Prometheus| Monitoring
+  LoadTesting -.->|Performance testing<br/>HTTPS/REST| System
+
+  %% Styling
+  classDef users fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+  classDef system fill:#fce4ec,stroke:#c2185b,stroke-width:4px
+  classDef external fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+
+  class Merchant,Admin,Developer users
+  class System system
+  class Keycloak,Monitoring,LoadTesting external

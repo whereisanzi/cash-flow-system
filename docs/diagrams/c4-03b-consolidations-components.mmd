@@ -1,0 +1,86 @@
+graph TB
+  subgraph External[External Systems]
+    Gateway[API Gateway<br/>Routes requests]
+    Database[(PostgreSQL<br/>Consolidation storage)]
+    RabbitMQ[RabbitMQ<br/>Event consumption]
+  end
+
+  subgraph ConsolidationsAPI[Consolidations API - Repository + Consumer Pattern]
+    subgraph Presentation[Presentation Layer]
+      Controller[Consolidation Controller<br/>Minimal API Controller<br/>HTTP endpoints for daily consolidations]
+    end
+
+    subgraph Application[Application Services]
+      CoService[Consolidation Service<br/>Domain Service<br/>Business operations for daily consolidations]
+      Consumer[Transaction Event Consumer<br/>Background Service<br/>Consumes transaction events from RabbitMQ]
+    end
+
+    subgraph Domain[Domain Layer]
+      Consolidation[Daily Consolidation<br/>Aggregate Root<br/>Domain entity representing daily financial summary]
+      TransactionType[Transaction Type<br/>Value Object<br/>Enum for debit/credit classification]
+    end
+
+    subgraph Infrastructure[Infrastructure Layer]
+      Repository[Consolidation Repository<br/>Data Access<br/>EF Core repository implementation]
+      DbContext[Consolidations DbContext<br/>Data Context<br/>EF Core database context]
+      RepositoryInterface[IRepository Interface<br/>Abstraction<br/>Repository contract]
+    end
+
+    subgraph Integration[Event Integration]
+      EventModel[Transaction Events<br/>Event DTOs<br/>TransactionCreatedEvent model]
+      EventHandler[Event Handler<br/>Message Processing<br/>Processes incoming transaction events]
+      DLQHandler[DLQ Handler<br/>Error Recovery<br/>Handles failed message processing]
+    end
+
+    subgraph DTOs[Response DTOs]
+      ResponseDto[Consolidation Response<br/>API Response<br/>Daily consolidation API response model]
+    end
+  end
+
+  %% External connections
+  Gateway --> Controller
+  RabbitMQ --> Consumer
+  DbContext --> Database
+
+  %% HTTP API flow
+  Controller --> CoService
+  Controller --> ResponseDto
+
+  %% Event consumption flow
+  Consumer --> EventHandler
+  EventHandler --> EventModel
+  EventHandler --> CoService
+  EventHandler --> DLQHandler
+  DLQHandler --> RabbitMQ
+
+  %% Domain service operations
+  CoService --> Consolidation
+  CoService --> Repository
+  CoService --> TransactionType
+
+  %% Data access layer
+  Repository --> RepositoryInterface
+  Repository --> DbContext
+  Repository --> Consolidation
+
+  %% Response mapping
+  Controller --> Consolidation
+
+  %% Styling
+  classDef external fill:#f9f9f9,stroke:#333,stroke-width:2px
+  classDef presentation fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
+  classDef application fill:#fce4ec,stroke:#c2185b,stroke-width:2px
+  classDef domain fill:#e8eaf6,stroke:#3f51b5,stroke-width:3px
+  classDef infrastructure fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef integration fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef dto fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef error fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+
+  class Gateway,Database,RabbitMQ external
+  class Controller presentation
+  class CoService,Consumer application
+  class Consolidation,TransactionType domain
+  class Repository,DbContext,RepositoryInterface infrastructure
+  class EventModel,EventHandler integration
+  class ResponseDto dto
+  class DLQHandler error

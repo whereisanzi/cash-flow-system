@@ -1,0 +1,25 @@
+erDiagram
+  TRANSACTIONS {
+    GUID Id PK
+    STRING MerchantId
+    INT Type
+    DECIMAL Amount
+    TIMESTAMP DateTime
+    STRING Description
+    TIMESTAMP CreatedAt
+  }
+
+  DAILY_CONSOLIDATION {
+    GUID Id PK
+    STRING MerchantId
+    DATE Date
+    DECIMAL TotalDebits
+    DECIMAL TotalCredits
+    DECIMAL NetBalance
+    INT TransactionCount
+    TIMESTAMP LastUpdated
+  }
+
+  %% Índices/constraints relevantes:
+  %% TRANSACTIONS: IX_Transactions_MerchantId, IX_Transactions_DateTime
+  %% DAILY_CONSOLIDATION: UNIQUE(MerchantId, Date)

@@ -1,0 +1,76 @@
+time="2025-09-24T05:05:21Z" level=info source=console
+time="2025-09-24T05:05:21Z" level=info msg="=== Service Independence Test Results ===" source=console
+time="2025-09-24T05:05:21Z" level=info msg="Duration: 210.3s" source=console
+time="2025-09-24T05:05:21Z" level=info source=console
+time="2025-09-24T05:05:21Z" level=info msg="Critical Success Criteria:" source=console
+time="2025-09-24T05:05:21Z" level=info msg="  ✓ transaction_availability{phase:independence_test} ≥ 95%" source=console
+time="2025-09-24T05:05:21Z" level=info msg="  ✓ independence_violations < 3" source=console
+time="2025-09-24T05:05:21Z" level=info msg="  ✓ Transaction latency acceptable during stress" source=console
+time="2025-09-24T05:05:21Z" level=info source=console
+time="2025-09-24T05:05:21Z" level=info msg="If all thresholds PASS: Service independence requirement is satisfied" source=console
+time="2025-09-24T05:05:21Z" level=info msg="If thresholds FAIL: System architecture needs improvement" source=console
+time="2025-09-24T05:05:21Z" level=info source=console
+
+
+  █ THRESHOLDS
+
+    auth_errors
+    ✓ 'count<5' count=0
+
+    independence_violations
+    ✓ 'count<3' count=0
+
+    transaction_availability{phase:independence_test}
+    ✓ 'rate>=0.95' rate=100.00%
+
+    transaction_latency_during_stress
+    ✓ 'p(95)<5000' p(95)=17
+
+
+  █ TOTAL RESULTS
+
+    checks_total.......: 32366   153.859999/s
+    checks_succeeded...: 100.00% 32366 out of 32366
+    checks_failed......: 0.00%   0 out of 32366
+
+    ✓ baseline consolidation appropriate
+    ✓ baseline transaction success
+    ✓ consolidation overload test responds
+    ✓ consolidation handles stress appropriately
+    ✓ transaction available during consolidation stress
+    ✓ transaction responds during consolidation stress
+    ✓ transaction maintains independence
+    ✓ transaction latency acceptable during stress
+
+    CUSTOM
+    auth_errors.........................: 0       0/s
+    consolidation_stress_success........: 100.00% 9601 out of 9601
+    independence_violations.............: 0       0/s
+    transaction_availability............: 100.00% 3081 out of 3081
+      { phase:independence_test }.......: 100.00% 3081 out of 3081
+    transaction_latency_during_stress...: avg=10.906524 min=4      med=7      max=471   p(90)=12      p(95)=17
+
+    HTTP
+    http_req_duration...................: avg=5.54ms    min=1.66ms med=3.08ms max=1.09s p(90)=8.65ms  p(95)=11.43ms
+      { expected_response:true }........: avg=5.54ms    min=1.66ms med=3.08ms max=1.09s p(90)=8.65ms  p(95)=11.43ms
+    http_req_failed.....................: 0.00%   0 out of 13558
+    http_reqs...........................: 13558   64.451395/s
+
+    EXECUTION
+    iteration_duration..................: avg=102.35ms  min=1.73ms med=3.23ms max=1.69s p(90)=310.1ms p(95)=339.06ms
+    iterations..........................: 13522   64.28026/s
+    vus.................................: 3       min=3            max=9
+    vus_max.............................: 33      min=33           max=33
+
+    NETWORK
+    data_received.......................: 5.7 MB  27 kB/s
+    data_sent...........................: 14 MB   68 kB/s
+
+
+
+
+running (3m30.4s), 00/33 VUs, 13522 complete and 0 interrupted iterations
+baseline                 ✓ [ 100% ] 5 VUs      1m0s
+consolidation_overload   ✓ [ 100% ] 00/20 VUs  2m0s  80.00 iters/s
+transaction_independence ✓ [ 100% ] 8 VUs      2m0s
+recovery                 ✓ [ 100% ] 3 VUs      30s

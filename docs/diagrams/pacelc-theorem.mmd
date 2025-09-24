@@ -1,0 +1,117 @@
+graph TB
+  subgraph PACELCTheorem[PACELC Theorem - Extended CAP Analysis]
+    subgraph PACELCDefinition[PACELC: If Partition then Availability vs Consistency; Else Latency vs Consistency]
+      PartitionScenario[During Network Partition<br/>Choose Availability OR Consistency]
+      NormalScenario[During Normal Operation<br/>Choose Latency OR Consistency]
+    end
+  end
+
+  subgraph CashFlowPACELC[Cash Flow System PACELC Analysis]
+    subgraph PartitionChoice[Partition Scenario - PA/EL]
+      DuringPartition[During Network Partition<br/>✅ Choose AVAILABILITY over Consistency<br/>• Transactions continue processing<br/>• Consolidations may lag behind<br/>• System remains operational<br/>• Data eventually reconciles]
+    end
+
+    subgraph NormalChoice[Normal Operation - EL]
+      DuringNormalOp[During Normal Operation<br/>✅ Choose LATENCY over Consistency<br/>• Fast transaction responses<br/>• Async consolidation updates<br/>• Better user experience<br/>• Acceptable eventual consistency]
+    end
+  end
+
+  subgraph ImplementationEvidence[Implementation Evidence]
+    subgraph PartitionEvidence[Partition Tolerance Evidence]
+      NetworkSegregation[Network Segregation<br/>🔗 transactions_network 172.20.0.0/24<br/>🔗 consolidations_network 172.21.0.0/24<br/>🔗 Services survive network splits<br/>🔗 Independent operation capability]
+
+      MessagePersistence[Message Persistence<br/>📦 RabbitMQ persistence enabled<br/>📦 Dead Letter Queue DLQ<br/>📦 Message durability guaranteed<br/>📦 No data loss during partitions]
+    end
+
+    subgraph LatencyOptimization[Latency Optimization Evidence]
+      AsyncProcessing[Asynchronous Processing<br/>⚡ Fire-and-forget event publishing<br/>⚡ Non-blocking transaction responses<br/>⚡ Background consolidation updates<br/>⚡ PgBouncer connection pooling]
+
+      CachingStrategy[Performance Optimizations<br/>🚀 Connection pooling PgBouncer<br/>🚀 Load balancing HAProxy<br/>🚀 Multiple service instances<br/>🚀 Minimal API overhead]
+    end
+  end
+
+  subgraph PerformanceMetrics[Performance Metrics Supporting PACELC Choice]
+    subgraph LatencyMetrics[Latency Achievements]
+      TransactionLatency[Transaction API Latency<br/>✅ p95: 27.07ms Target <2000ms<br/>✅ Fast response times maintained<br/>✅ User experience optimized]
+
+      ConsolidationLatency[Consolidation API Latency<br/>✅ p95: 12.4ms Target <3000ms<br/>✅ Read operations optimized<br/>✅ Query performance excellent]
+    end
+
+    subgraph AvailabilityAchieved[Availability Achievements]
+      UptimeMetrics[High Availability Results<br/>✅ 100% transaction availability during stress<br/>✅ 0 independence violations<br/>✅ Services survive consolidation overload<br/>✅ No single point of failure]
+
+      ConsistencyConvergence[Consistency Convergence<br/>✅ 100% eventual consistency achieved<br/>✅ 38s average convergence time<br/>✅ All events eventually processed<br/>✅ Data integrity maintained]
+    end
+  end
+
+  subgraph BusinessAlignment[Business Requirements Alignment]
+    subgraph CriticalPath[Critical Business Path]
+      TransactionCriticality[Transaction Processing - Critical<br/>💎 Revenue-generating operations<br/>💎 Must never be unavailable<br/>💎 Customer-facing experience<br/>💎 Real-time requirement]
+
+      ReportingCriticality[Consolidation Reporting - Important<br/>📊 Management information<br/>📊 Can tolerate brief delays<br/>📊 Eventual accuracy acceptable<br/>📊 Batch-oriented processing]
+    end
+
+    subgraph PAELCAlignment[PACELC Alignment with Business]
+      PartitionAlignment[Partition Scenario Alignment<br/>✅ Keep transactions available during network issues<br/>✅ Revenue protection prioritized<br/>✅ Reports can wait for network recovery<br/>✅ Business continuity maintained]
+
+      LatencyAlignment[Normal Operation Alignment<br/>✅ Fast transaction responses improve UX<br/>✅ Async reporting reduces wait times<br/>✅ Better resource utilization<br/>✅ Cost-effective architecture]
+    end
+  end
+
+  subgraph ComparisonWithAlternatives[Comparison with Alternative PACELC Choices]
+    subgraph PCECChoice[PC-EC Alternative - Strong Consistency]
+      PCECTradeoffs[❌ PC-EC Would Require<br/>• Synchronous replication<br/>• Distributed transactions 2PC<br/>• Higher latency for all operations<br/>• Risk of availability loss<br/>• Complex failure scenarios]
+    end
+
+    subgraph PAECChoice[PA-EC Alternative - Availability and Consistency]
+      PAECTradeoffs[❌ PA-EC Would Require<br/>• Complex consistency protocols<br/>• Vector clocks or similar<br/>• Higher operational complexity<br/>• Increased latency overhead<br/>• Diminished partition tolerance]
+    end
+  end
+
+  subgraph MonitoringStrategy[Monitoring Strategy for PACELC]
+    subgraph ConsistencyMonitoring[Consistency Monitoring]
+      EventualConsistencyTracking[Eventual Consistency Tracking<br/>📈 Convergence time measurement<br/>📈 DLQ message monitoring<br/>📈 Data reconciliation alerts<br/>📈 Consistency SLA tracking]
+    end
+
+    subgraph LatencyMonitoring[Latency Monitoring]
+      ResponseTimeTracking[Response Time Monitoring<br/>⏱️ p95/p99 latency alerts<br/>⏱️ SLO-based thresholds<br/>⏱️ Performance regression detection<br/>⏱️ User experience metrics]
+    end
+
+    subgraph AvailabilityMonitoring[Availability Monitoring]
+      UptimeTracking[Availability Tracking<br/>🎯 Service uptime monitoring<br/>🎯 Partition detection alerts<br/>🎯 Independence validation<br/>🎯 Business impact assessment]
+    end
+  end
+
+  %% Relationships
+  PartitionScenario --> DuringPartition
+  NormalScenario --> DuringNormalOp
+
+  DuringPartition --> NetworkSegregation
+  DuringPartition --> MessagePersistence
+  DuringNormalOp --> AsyncProcessing
+  DuringNormalOp --> CachingStrategy
+
+  AsyncProcessing --> TransactionLatency
+  CachingStrategy --> ConsolidationLatency
+  NetworkSegregation --> UptimeMetrics
+  MessagePersistence --> ConsistencyConvergence
+
+  TransactionCriticality --> PartitionAlignment
+  ReportingCriticality --> LatencyAlignment
+
+  %% Styling
+  classDef theorem fill:#fff3e0,stroke:#f57c00,stroke-width:4px
+  classDef ourChoice fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+  classDef evidence fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef metrics fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef business fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+  classDef monitoring fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
+  classDef alternatives fill:#ffebee,stroke:#d32f2f,stroke-width:2px
+
+  class PACELCDefinition,PartitionScenario,NormalScenario theorem
+  class PartitionChoice,NormalChoice,DuringPartition,DuringNormalOp ourChoice
+  class PartitionEvidence,LatencyOptimization,NetworkSegregation,MessagePersistence,AsyncProcessing,CachingStrategy evidence
+  class LatencyMetrics,AvailabilityAchieved,TransactionLatency,ConsolidationLatency,UptimeMetrics,ConsistencyConvergence metrics
+  class BusinessAlignment,CriticalPath,PAELCAlignment,TransactionCriticality,ReportingCriticality,PartitionAlignment,LatencyAlignment business
+  class MonitoringStrategy,ConsistencyMonitoring,LatencyMonitoring,AvailabilityMonitoring,EventualConsistencyTracking,ResponseTimeTracking,UptimeTracking monitoring
+  class ComparisonWithAlternatives,PCECChoice,PAECChoice,PCECTradeoffs,PAECTradeoffs alternatives
