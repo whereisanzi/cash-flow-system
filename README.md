@@ -107,7 +107,7 @@ O desenvolvimento do sistema foi iniciado com uma sessão de **Event Storming** 
 - **Financial Analyst**: Usuário que consulta relatórios e consolidações
 - **External Systems**: Keycloak (autenticação), RabbitMQ (messaging), Monitoring
 
-#### ⚡ **Comandos do Domínio**
+#### **Comandos do Domínio**
 - **Create Transaction**: Comando para registrar nova transação (crédito/débito)
 - **Query Daily Consolidation**: Comando para consultar consolidado diário
 
@@ -143,14 +143,14 @@ O desenvolvimento do sistema foi iniciado com uma sessão de **Event Storming** 
    - Métricas de performance
    - Health monitoring
 
-#### 📐 **Regras de Negócio Identificadas**
+#### **Regras de Negócio Identificadas**
 - Transações devem ter merchant válido
 - Valor deve ser positivo
 - Tipo deve ser Credit (1) ou Debit (2)
 - Uma consolidação por merchant/data
 - Agregação apenas diária (não hora/minuto)
 
-#### ❗ **Issues e Decisões Arquiteturais**
+#### **Issues e Decisões Arquiteturais**
 - **Idempotência**: Solucionado com versionamento de eventos e deduplicação
 - **Consistência Eventual**: Aceitável com convergência máxima de 40s
 - **Escalabilidade**: Horizontal scaling com particionamento por merchant
@@ -161,23 +161,23 @@ graph LR
   subgraph EventStorming[Event Storming - Cash Flow Domain]
     subgraph Legend[Legenda]
       Event[Domain Event]
-      Command[⚡ Command]
-      Actor[👤 Actor/User]
+      Command[Command]
+      Actor[Actor/User]
       Policy[Policy]
       ReadModel[Read Model]
-      External[🔌 External System]
+      External[External System]
       Aggregate[Aggregate]
-      Issue[❗ Issue/Question]
+      Issue[Issue/Question]
     end
 
     subgraph TransactionFlow[Transaction Flow - Core Business Process]
       %% Actors
-      Merchant[👤 Merchant<br/>Comerciante]
-      FinancialAnalyst[👤 Financial Analyst<br/>Analista Financeiro]
+      Merchant[Merchant<br/>Comerciante]
+      FinancialAnalyst[Financial Analyst<br/>Analista Financeiro]
 
       %% Commands
-      CreateTransaction[⚡ Create Transaction<br/>Criar Transação]
-      QueryConsolidation[⚡ Query Daily Consolidation<br/>Consultar Consolidado]
+      CreateTransaction[Create Transaction<br/>Criar Transação]
+      QueryConsolidation[Query Daily Consolidation<br/>Consultar Consolidado]
 
       %% Domain Events
       TransactionCreated[Transaction Created<br/>Transação Criada<br/>merchantId, type, amount, date]
@@ -194,14 +194,14 @@ graph LR
       DailyConsolidationView[Daily Consolidation View<br/>merchantId, date, totalCredits,<br/>totalDebits, netBalance,<br/>transactionCount, lastUpdated]
 
       %% External Systems
-      AuthSystem[🔌 Keycloak<br/>Authentication System]
-      MonitoringSystem[🔌 Prometheus/Grafana<br/>Monitoring System]
-      MessageBroker[🔌 RabbitMQ<br/>Message Broker]
+      AuthSystem[Keycloak<br/>Authentication System]
+      MonitoringSystem[Prometheus/Grafana<br/>Monitoring System]
+      MessageBroker[RabbitMQ<br/>Message Broker]
 
       %% Issues/Questions
-      IdempotencyIssue[❗ Idempotency Concern<br/>How to handle duplicate events?<br/>SOLUTION: Event versioning + deduplication]
-      ConsistencyIssue[❗ Eventual Consistency<br/>Delay in consolidation updates<br/>ACCEPTABLE: Max 40s convergence]
-      ScaleIssue[❗ Scale Concern<br/>High volume transactions<br/>SOLUTION: Horizontal scaling + partitioning]
+      IdempotencyIssue[Idempotency Concern<br/>How to handle duplicate events?<br/>SOLUTION: Event versioning + deduplication]
+      ConsistencyIssue[Eventual Consistency<br/>Delay in consolidation updates<br/>ACCEPTABLE: Max 40s convergence]
+      ScaleIssue[Scale Concern<br/>High volume transactions<br/>SOLUTION: Horizontal scaling + partitioning]
     end
 
     %% Flow connections
@@ -318,7 +318,7 @@ Cada serviço possui sua própria base **PostgreSQL** com acesso otimizado via *
 - **Consolidations Service**: Otimizado para agregações e consultas analíticas
 - **Connection Pooling**: PgBouncer reduz overhead de conexões e melhora performance
 
-#### 🔒 Isolamento e Segurança
+#### Isolamento e Segurança
 A arquitetura implementa **defesa em profundidade** através de:
 
 ![Segurança de Rede](docs/diagrams/images/05-network-security.png)
@@ -460,7 +460,7 @@ O projeto segue o **modelo C4** para documentação arquitetural, proporcionando
 ![C4 System Context](docs/diagrams/images/c4-01-system-context.png)
 
 <details>
-<summary>🌍 Ver contexto do sistema (clique para expandir)</summary>
+<summary>Ver contexto do sistema (clique para expandir)</summary>
 
 **Personas e Sistemas Externos:**
 - **Merchants (Comerciantes)**: Usuários finais que registram transações
@@ -477,7 +477,7 @@ O Cash Flow System atua como uma **plataforma centralizada** de processamento fi
 ![C4 Container View](docs/diagrams/images/c4-02-container.png)
 
 <details>
-<summary>📦 Ver arquitetura de containers (clique para expandir)</summary>
+<summary>Ver arquitetura de containers (clique para expandir)</summary>
 
 **Containers Identificados:**
 - **KrakenD API Gateway**: Ponto de entrada único com roteamento inteligente
@@ -635,7 +635,7 @@ Os diagramas de sequência mostram as **interações detalhadas** entre componen
 ![NFR Evidence Dashboard](docs/diagrams/images/13-nfr-evidence-dashboard.png)
 
 <details>
-<summary>📊 Ver dashboard completo de NFR (clique para expandir)</summary>
+<summary>Ver dashboard completo de NFR (clique para expandir)</summary>
 
 Consulte o diagrama interativo completo em: [13-nfr-evidence-dashboard.mmd](docs/diagrams/13-nfr-evidence-dashboard.mmd)
 
@@ -645,7 +645,7 @@ Consulte o diagrama interativo completo em: [13-nfr-evidence-dashboard.mmd](docs
 ![Performance Benchmarks](docs/diagrams/images/14-performance-benchmarks.png)
 
 <details>
-<summary>📈 Ver benchmarks detalhados (clique para expandir)</summary>
+<summary>Ver benchmarks detalhados (clique para expandir)</summary>
 
 Consulte a análise completa em: [14-performance-benchmarks.mmd](docs/diagrams/14-performance-benchmarks.mmd)
 
@@ -655,7 +655,7 @@ Consulte a análise completa em: [14-performance-benchmarks.mmd](docs/diagrams/1
 ![Metrics Scorecard](docs/diagrams/images/16-metrics-scorecard.png)
 
 <details>
-<summary>🏆 Ver scorecard completo (clique para expandir)</summary>
+<summary>Ver scorecard completo (clique para expandir)</summary>
 
 Consulte o scorecard detalhado em: [16-metrics-scorecard.mmd](docs/diagrams/16-metrics-scorecard.mmd)
 
@@ -703,7 +703,7 @@ sequenceDiagram
 ![Fluxo Assíncrono](docs/diagrams/images/09-async-flow.png)
 
 <details>
-<summary>📨 Ver fluxo assíncrono detalhado (clique para expandir)</summary>
+<summary>Ver fluxo assíncrono detalhado (clique para expandir)</summary>
 
 ```mermaid
 flowchart LR
@@ -1084,7 +1084,7 @@ make load-test-consistency   # Teste de consistência eventual
 | **HAProxy Stats (CO)** | http://localhost:8282 | - |
 | **RabbitMQ Management** | http://localhost:15672 | guest/guest |
 
-## 💼 Exemplos de Uso da API
+## Exemplos de Uso da API
 
 ### 1. Obter Token de Autenticação
 ```bash
