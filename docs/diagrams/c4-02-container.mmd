@@ -1,90 +1,116 @@
 graph TB
-  subgraph Users[Users]
+  subgraph Users[Users/External Actors]
     Merchant[Merchant<br/>Business owner tracking cash flow]
-    Admin[Administrator<br/>System operator]
+    FinancialAnalyst[Financial Analyst<br/>Views consolidations and reports]
+    LoadTester[k6 Load Tester<br/>Performance validation]
   end
 
-  subgraph ExternalSystems[External Systems]
-    Keycloak[Keycloak<br/>Identity Provider<br/>OAuth2/JWT]
+  subgraph CashFlowDomain[Cash Flow Domain - Our Microservices Implementation]
+
+    subgraph APIGateway[API Gateway Layer]
+      KrakenD[KrakenD API Gateway<br/>Technology: Go<br/>Port: 8080<br/>Container Role: Entry Point<br/>Responsibilities:<br/>- Single entry point<br/>- JWT validation delegates to Keycloak<br/>- Rate limiting & CORS<br/>- Request routing to our microservices]
+    end
+
+    subgraph TransactionBoundedContext[Transaction Management - Our Core Domain Implementation]
+      TransactionsAPI1[TransactionsApi Instance 1<br/>Technology: .NET 9 Web API<br/>Port: 5001 internal<br/>Container: cash-flow-transactions-1<br/>Architecture: Flows Pattern<br/>Responsibilities:<br/>- Transaction business logic<br/>- Domain event publishing<br/>- ACID transaction guarantees]
+
+      TransactionsAPI2[TransactionsApi Instance 2<br/>Technology: .NET 9 Web API<br/>Port: 5001 internal<br/>Container: cash-flow-transactions-2<br/>Architecture: Flows Pattern<br/>Responsibilities:<br/>- Transaction business logic<br/>- Domain event publishing<br/>- ACID transaction guarantees]
+
+      TransactionsDB[Transactions Database<br/>Technology: PostgreSQL 16<br/>Port: 5432 internal<br/>Container: transactions-db<br/>Responsibilities:<br/>- Transaction data persistence<br/>- ACID compliance<br/>- Optimized for writes]
+
+      TxPgBouncer[Transactions PgBouncer<br/>Technology: PgBouncer<br/>Port: 6432 internal<br/>Container: pgbouncer-transactions<br/>Responsibilities:<br/>- Connection pooling<br/>- Performance optimization]
+    end
+
+    subgraph ConsolidationBoundedContext[Financial Consolidation - Our Supporting Domain Implementation]
+      ConsolidationsAPI1[ConsolidationsApi Instance 1<br/>Technology: .NET 9 Web API<br/>Port: 5002 internal<br/>Container: cash-flow-consolidations-1<br/>Architecture: Repository + EF Core<br/>Responsibilities:<br/>- Daily consolidation queries<br/>- Event consumption & processing<br/>- Read-optimized operations]
+
+      ConsolidationsAPI2[ConsolidationsApi Instance 2<br/>Technology: .NET 9 Web API<br/>Port: 5002 internal<br/>Container: cash-flow-consolidations-2<br/>Architecture: Repository + EF Core<br/>Responsibilities:<br/>- Daily consolidation queries<br/>- Event consumption & processing<br/>- Read-optimized operations]
+
+      ConsolidationsDB[Consolidations Database<br/>Technology: PostgreSQL 16<br/>Port: 5432 internal<br/>Container: consolidations-db<br/>Responsibilities:<br/>- Aggregated data storage<br/>- Analytical query optimization<br/>- Eventual consistency]
+
+      CoPgBouncer[Consolidations PgBouncer<br/>Technology: PgBouncer<br/>Port: 6432 internal<br/>Container: pgbouncer-consolidations<br/>Responsibilities:<br/>- Connection pooling<br/>- Query optimization]
+    end
+
+    subgraph LoadBalancing[Load Balancing Infrastructure]
+      TxHAProxy[Transactions HAProxy<br/>Technology: HAProxy<br/>Port: 8080 internal<br/>Container: haproxy-transactions<br/>Responsibilities:<br/>- Load balancing TX instances<br/>- Health checks<br/>- Traffic distribution]
+
+      CoHAProxy[Consolidations HAProxy<br/>Technology: HAProxy<br/>Port: 8080 internal<br/>Container: haproxy-consolidations<br/>Responsibilities:<br/>- Load balancing CO instances<br/>- Health checks<br/>- Traffic distribution]
+    end
+
   end
 
-  subgraph CashFlowSystem[Cash Flow System]
-    subgraph Gateway[API Gateway]
-      KrakenD[KrakenD API Gateway<br/>.NET/Go, Port 8000<br/>Single entry point, JWT validation<br/>rate limiting, routing]
+  subgraph ExternalSystems[External Systems - Not Our Implementation]
+
+    subgraph IdentityManagement[Identity & Access Management]
+      Keycloak[Keycloak Server<br/>Technology: Keycloak Java<br/>Port: 8080 exposed<br/>Container: keycloak<br/>EXTERNAL SYSTEM<br/>Responsibilities:<br/>- OAuth2/OIDC provider<br/>- JWT token issuing<br/>- User authentication<br/>- Multi-tenant isolation]
+
+      KeycloakDB[Keycloak Database<br/>Technology: PostgreSQL 16<br/>Port: 5432 internal<br/>Container: keycloak-db<br/>Responsibilities:<br/>- User data storage<br/>- Session management<br/>- Role & permission data]
     end
 
-    subgraph TransactionsDomain[Transactions Domain]
-      TxAPI[Transactions API<br/>.NET 9, Port 5001<br/>Records financial transactions<br/>using Flows pattern]
-      TxDB[(Transactions Database<br/>PostgreSQL<br/>Stores transaction records)]
-      TxPool[Transactions PgBouncer<br/>Connection Pool<br/>Optimizes database connections]
+    subgraph ObservabilityStack[Observability & Monitoring]
+      Prometheus[Prometheus<br/>Technology: Prometheus<br/>Port: 9090 exposed<br/>Container: prometheus<br/>EXTERNAL TOOL<br/>Responsibilities:<br/>- Metrics collection & storage<br/>- Alerting rules<br/>- Time-series database]
+
+      Grafana[Grafana<br/>Technology: Grafana<br/>Port: 3000 exposed<br/>Container: grafana<br/>EXTERNAL TOOL<br/>Responsibilities:<br/>- Metrics visualization<br/>- Dashboard management<br/>- Alert notifications]
     end
 
-    subgraph ConsolidationsDomain[Consolidations Domain]
-      CoAPI[Consolidations API<br/>.NET 9, Port 5002<br/>Provides daily consolidations<br/>using Repository pattern]
-      CoDB[(Consolidations Database<br/>PostgreSQL<br/>Stores daily consolidation projections)]
-      CoPool[Consolidations PgBouncer<br/>Connection Pool<br/>Optimizes database connections]
+    subgraph EventInfrastructure[Event-Driven Integration]
+      RabbitMQ[RabbitMQ Message Broker<br/>Technology: RabbitMQ Erlang<br/>Port: 5672/15672<br/>Container: rabbitmq<br/>EXTERNAL INFRASTRUCTURE<br/>Responsibilities:<br/>- Event-driven integration<br/>- Message persistence & routing<br/>- Dead letter queue handling]
     end
 
-    subgraph Messaging[Event-Driven Integration]
-      RabbitMQ[RabbitMQ<br/>Message Broker<br/>Handles async communication<br/>between services]
-    end
-
-    subgraph LoadBalancing[Load Balancing]
-      TxLB[HAProxy TX<br/>Load Balancer<br/>Distributes traffic to<br/>Transactions API instances]
-      CoLB[HAProxy CO<br/>Load Balancer<br/>Distributes traffic to<br/>Consolidations API instances]
-    end
-
-    subgraph Observability[Observability Stack]
-      Prometheus[Prometheus<br/>Metrics Collection<br/>Scrapes and stores metrics]
-      Grafana[Grafana<br/>Visualization<br/>Dashboards and alerting]
-    end
   end
 
-  %% External interactions
-  Merchant -.->|Makes API requests<br/>HTTPS/REST| KrakenD
-  Admin -.->|Views monitoring dashboards<br/>HTTPS| Grafana
-  KrakenD -.->|Validates JWT tokens<br/>HTTP/OAuth2| Keycloak
+  %% User interactions - Entry via Gateway
+  Merchant -.->|"HTTPS/REST API calls<br/>JWT Bearer token required"| KrakenD
+  FinancialAnalyst -.->|"HTTPS/REST API calls<br/>JWT Bearer token required"| KrakenD
+  LoadTester -.->|"Performance testing<br/>Multiple concurrent connections"| KrakenD
 
-  %% Gateway routing
-  KrakenD --> TxLB
-  KrakenD --> CoLB
+  %% Gateway routing to our microservices
+  KrakenD -->|"POST /api/v1/merchants/{id}/transactions<br/>Routes to Transaction context"| TxHAProxy
+  KrakenD -->|"GET /api/v1/merchants/{id}/consolidations<br/>Routes to Consolidation context"| CoHAProxy
 
-  %% Load balancing
-  TxLB --> TxAPI
-  CoLB --> CoAPI
+  %% Load balancing to our API instances
+  TxHAProxy --> TransactionsAPI1
+  TxHAProxy --> TransactionsAPI2
+  CoHAProxy --> ConsolidationsAPI1
+  CoHAProxy --> ConsolidationsAPI2
 
-  %% Data access
-  TxAPI --> TxPool
-  TxPool --> TxDB
-  CoAPI --> CoPool
-  CoPool --> CoDB
+  %% Data access within our contexts
+  TransactionsAPI1 --> TxPgBouncer
+  TransactionsAPI2 --> TxPgBouncer
+  TxPgBouncer --> TransactionsDB
 
-  %% Event-driven communication
-  TxAPI --> RabbitMQ
-  RabbitMQ --> CoAPI
+  ConsolidationsAPI1 --> CoPgBouncer
+  ConsolidationsAPI2 --> CoPgBouncer
+  CoPgBouncer --> ConsolidationsDB
 
-  %% Monitoring
-  Prometheus -.-> TxAPI
-  Prometheus -.-> CoAPI
-  Prometheus -.-> KrakenD
-  Prometheus -.-> RabbitMQ
+  %% Domain integration - Event-driven between our contexts
+  TransactionsAPI1 -.->|"Publishes TransactionCreated events<br/>Domain integration"| RabbitMQ
+  TransactionsAPI2 -.->|"Publishes TransactionCreated events<br/>Domain integration"| RabbitMQ
+  RabbitMQ -.->|"Delivers events to consumers<br/>Async processing"| ConsolidationsAPI1
+  RabbitMQ -.->|"Delivers events to consumers<br/>Async processing"| ConsolidationsAPI2
+
+  %% External dependencies
+  KrakenD -.->|"JWT validation<br/>OAuth2 delegation"| Keycloak
+  Keycloak --> KeycloakDB
+
+  Prometheus -.->|"Scrapes /metrics endpoints<br/>from our microservices"| TransactionsAPI1 & TransactionsAPI2
+  Prometheus -.->|"Scrapes /metrics endpoints<br/>from our microservices"| ConsolidationsAPI1 & ConsolidationsAPI2
+  Prometheus -.->|"Scrapes infrastructure metrics"| KrakenD & TxHAProxy & CoHAProxy
   Grafana --> Prometheus
 
-  %% Styling
-  classDef users fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
-  classDef external fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
-  classDef gateway fill:#fce4ec,stroke:#c2185b,stroke-width:3px
-  classDef api fill:#e8eaf6,stroke:#3f51b5,stroke-width:2px
-  classDef database fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
-  classDef messaging fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-  classDef loadbalancer fill:#e0f2f1,stroke:#00796b,stroke-width:2px
-  classDef monitoring fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+  %% Styling for C4 Level 2 - Container View (Real Implementation)
+  classDef user fill:#e8f4fd,stroke:#1976d2,stroke-width:2px
+  classDef gateway fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+  classDef ourMicroservice fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px
+  classDef ourDatabase fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef ourInfrastructure fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+  classDef externalSystem fill:#f5f5f5,stroke:#616161,stroke-width:2px
+  classDef externalInfra fill:#ffebee,stroke:#d32f2f,stroke-width:2px
 
-  class Merchant,Admin users
-  class Keycloak external
+  class Merchant,FinancialAnalyst,LoadTester user
   class KrakenD gateway
-  class TxAPI,CoAPI api
-  class TxDB,CoDB,TxPool,CoPool database
-  class RabbitMQ messaging
-  class TxLB,CoLB loadbalancer
-  class Prometheus,Grafana monitoring
+  class TransactionsAPI1,TransactionsAPI2,ConsolidationsAPI1,ConsolidationsAPI2 ourMicroservice
+  class TransactionsDB,ConsolidationsDB ourDatabase
+  class TxPgBouncer,CoPgBouncer,TxHAProxy,CoHAProxy ourInfrastructure
+  class Keycloak,KeycloakDB,Prometheus,Grafana externalSystem
+  class RabbitMQ externalInfra

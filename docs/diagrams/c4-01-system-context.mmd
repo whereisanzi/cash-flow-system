@@ -1,61 +1,56 @@
 graph TB
-  subgraph External[External Actors & Systems]
-    Merchant[👤 Merchant<br/>Comerciante que registra<br/>transações financeiras]
-    FinancialAnalyst[👤 Financial Analyst<br/>Analista que consulta<br/>relatórios consolidados]
-    Auditor[👤 Auditor<br/>Auditores internos/externos<br/>que verificam compliance]
-    LoadTester[🔧 k6 Load Tester<br/>Sistema de testes<br/>automatizados]
-
-    ExternalIdentity[🔐 External Identity Provider<br/>Keycloak - OAuth2/OIDC<br/>Gestão centralizada de identidade]
-    Monitoring[📈 External Monitoring<br/>Prometheus + Grafana<br/>Observabilidade empresarial]
+  subgraph External[External Actors]
+    Merchant[Merchant<br/>Comerciante que registra<br/>transações financeiras]
+    FinancialAnalyst[Financial Analyst<br/>Analista que consulta<br/>relatórios consolidados]
+    Auditor[Auditor<br/>Auditores internos/externos<br/>que verificam compliance]
+    LoadTester[k6 Load Tester<br/>Sistema de testes<br/>automatizados]
   end
 
-  subgraph CashFlowSystem[Cash Flow System - Bounded Contexts]
-    subgraph TransactionContext[🔷 Transaction Management Context<br/>Core Domain]
-      TransactionBC[Gestão de Movimentação Financeira<br/>• Registro de transações<br/>• Validação de regras de negócio<br/>• Notificação de eventos]
-    end
+  subgraph CashFlowDomain[Cash Flow Domain - Real Bounded Contexts We Own]
 
-    subgraph ConsolidationContext[🔷 Financial Consolidation Context<br/>Supporting Domain]
-      ConsolidationBC[Consolidação de Saldos<br/>• Agregação de dados<br/>• Cálculos de saldo<br/>• Geração de relatórios]
-    end
+    TransactionContext[Transaction Management<br/>CORE DOMAIN<br/>- Processamento de transações financeiras<br/>- Validação de regras de negócio<br/>- Publicação de eventos de domínio<br/>- Consistência transacional ACID<br/>- Implemented as: TransactionsApi]
 
-    subgraph AuditContext[🔷 Financial Audit Context<br/>Supporting Domain]
-      AuditBC[Auditoria e Compliance<br/>• Trilha de auditoria<br/>• Registros imutáveis<br/>• Relatórios de compliance]
-    end
+    ConsolidationContext[Financial Consolidation<br/>SUPPORTING DOMAIN<br/>- Agregação diária de dados<br/>- Consultas analíticas otimizadas<br/>- Consumo de eventos de domínio<br/>- Consistência eventual<br/>- Implemented as: ConsolidationsApi]
 
-    subgraph MerchantContext[🔷 Merchant Management Context<br/>Generic Subdomain]
-      MerchantBC[Gestão de Identidade<br/>• Autenticação<br/>• Autorização<br/>• Isolamento multi-tenant]
-    end
   end
 
-  %% Business Interactions
-  Merchant -->|"Registra transações<br/>para controle financeiro"| TransactionBC
-  FinancialAnalyst -->|"Consulta consolidados<br/>para acompanhar faturamento"| ConsolidationBC
-  Auditor -->|"Acessa trilhas<br/>para verificar compliance"| AuditBC
+  subgraph ExternalSystems[External Systems - Not Our Bounded Contexts]
 
-  LoadTester -->|"Testa performance<br/>e NFRs"| TransactionBC
-  LoadTester -->|"Valida escalabilidade"| ConsolidationBC
+    IdentityProvider[Keycloak Identity Provider<br/>EXTERNAL SYSTEM<br/>- OAuth2/OIDC authentication<br/>- JWT token management<br/>- User and role management<br/>- Multi-tenant support]
 
-  %% Context Integration
-  TransactionBC -.->|"Eventos de transação"| ConsolidationBC
-  TransactionBC -.->|"Logs de auditoria"| AuditBC
-  ConsolidationBC -.->|"Registros de cálculo"| AuditBC
+    MonitoringStack[Observability Stack<br/>EXTERNAL TOOLS<br/>- Prometheus: Metrics collection<br/>- Grafana: Dashboards and alerting<br/>- System health monitoring<br/>- Performance metrics]
 
-  %% External Dependencies
-  MerchantBC -.->|"Delegação de autenticação"| ExternalIdentity
-  TransactionBC -.->|"Métricas de performance"| Monitoring
-  ConsolidationBC -.->|"Métricas de agregação"| Monitoring
-  AuditBC -.->|"Métricas de compliance"| Monitoring
+    MessageBroker[RabbitMQ Message Broker<br/>EXTERNAL INFRASTRUCTURE<br/>- Event-driven integration<br/>- Async message delivery<br/>- Dead letter queue support<br/>- Message persistence]
 
-  %% Styling
+  end
+
+  %% Business Interactions - Users to Our Domain
+  Merchant -->|"POST /transactions<br/>Registra transações financeiras"| TransactionContext
+  FinancialAnalyst -->|"GET /consolidations<br/>Consulta saldos consolidados"| ConsolidationContext
+  Auditor -->|"GET /consolidations<br/>Acessa dados para auditoria"| ConsolidationContext
+  LoadTester -->|"Performance testing<br/>Valida NFRs do sistema"| TransactionContext
+  LoadTester -->|"Load testing<br/>Testa escalabilidade"| ConsolidationContext
+
+  %% Domain Integration - DDD Context Mapping
+  TransactionContext -.->|"Domain Events<br/>(TransactionCreated)<br/>Async via RabbitMQ"| ConsolidationContext
+
+  %% External Dependencies - Our Domain to External Systems
+  TransactionContext -.->|"Publishes events<br/>Event-driven integration"| MessageBroker
+  MessageBroker -.->|"Delivers events<br/>Async processing"| ConsolidationContext
+
+  TransactionContext -.->|"Authentication required<br/>JWT validation"| IdentityProvider
+  ConsolidationContext -.->|"Authentication required<br/>JWT validation"| IdentityProvider
+
+  TransactionContext -.->|"Metrics publishing<br/>/metrics endpoint"| MonitoringStack
+  ConsolidationContext -.->|"Metrics publishing<br/>/metrics endpoint"| MonitoringStack
+
+  %% Styling for C4 Level 1 - System Context (Real Architecture)
   classDef actor fill:#e8f4fd,stroke:#1976d2,stroke-width:2px
-  classDef context fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-  classDef external fill:#f5f5f5,stroke:#616161,stroke-width:2px
-  classDef core fill:#e8f5e8,stroke:#2e7d32,stroke-width:4px
-  classDef supporting fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-  classDef generic fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+  classDef coreContext fill:#e8f5e8,stroke:#2e7d32,stroke-width:4px
+  classDef supportingContext fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+  classDef externalSystem fill:#f5f5f5,stroke:#616161,stroke-width:2px
 
   class Merchant,FinancialAnalyst,Auditor,LoadTester actor
-  class ExternalIdentity,Monitoring external
-  class TransactionBC core
-  class ConsolidationBC,AuditBC supporting
-  class MerchantBC generic
+  class TransactionContext coreContext
+  class ConsolidationContext supportingContext
+  class IdentityProvider,MonitoringStack,MessageBroker externalSystem

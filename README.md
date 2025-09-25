@@ -35,31 +35,51 @@ O **Sistema de Fluxo de Caixa** é uma plataforma de processamento de transaçõ
 
 ### Mapeamento de Capacidades de Negócio (Bounded Contexts)
 
-As capacidades foram identificadas através de **Event Storming** e mapeadas para **Bounded Contexts** seguindo princípios de **DDD**, **TOGAF** e **BIAN**:
+As capacidades foram identificadas através de **Event Storming** e mapeadas para **Bounded Contexts** reais implementados seguindo princípios de **DDD**, **TOGAF** e **BIAN**:
+
+## **Bounded Contexts Implementados (Nosso Código)**
 
 #### **Transaction Management** (Core Domain)
 - **Capacidade**: Gestão de Movimentação Financeira
 - **Justificativa**: Registro de entradas e saídas de dinheiro para acompanhar o fluxo de caixa operacional
-- **Domínio**: Operações financeiras em tempo real com garantia de integridade
-- **Responsabilidades**: Validação, persistência e notificação de transações
+- **Implementação**: `src/TransactionsApi/` com padrão **Flows**
+- **Responsabilidades**: Validação, persistência e publicação de eventos de domínio
+- **Características**: Alta consistência, ACID, performance otimizada para escritas
 
 #### **Financial Consolidation** (Supporting Domain)
 - **Capacidade**: Consolidação de Saldos e Relatórios
 - **Justificativa**: Consultar saldo diário consolidado para acompanhar faturamento e performance financeira da loja
-- **Domínio**: Agregação e análise de dados financeiros
-- **Responsabilidades**: Cálculos de saldo, totalização e geração de relatórios
+- **Implementação**: `src/ConsolidationsApi/` com padrão **Repository + EF Core**
+- **Responsabilidades**: Consumo de eventos, agregação e consultas analíticas
+- **Características**: Consistência eventual, otimizado para leitura e agregações
 
-#### **Financial Audit** (Supporting Domain)
-- **Capacidade**: Auditoria e Compliance Financeiro
-- **Justificativa**: Atender requisitos regulatórios e fornecer trilha de auditoria completa das operações
-- **Domínio**: Conformidade e rastreabilidade
-- **Responsabilidades**: Registros imutáveis, histórico de operações e compliance
+## **Sistemas Externos (Não são Bounded Contexts Nossos)**
 
-#### **Merchant Management** (Generic Subdomain)
-- **Capacidade**: Gestão de Identidade de Comerciantes
-- **Justificativa**: Identificar e autorizar comerciantes para garantir segregação de dados e operações
-- **Domínio**: Identidade e acesso
-- **Responsabilidades**: Autenticação, autorização e isolamento por tenant
+#### **Identity & Access Management** (External System)
+- **Sistema**: Keycloak (OAuth2/OIDC Provider)
+- **Justificativa**: Delegamos autenticação para sistema especializado e maduro
+- **Integração**: JWT validation no API Gateway, não temos código de identity management
+- **Responsabilidades**: Autenticação, autorização, multi-tenant isolation
+
+#### **System Observability** (External Tools)
+- **Sistema**: Prometheus + Grafana stack
+- **Justificativa**: Utilizamos ferramentas de observabilidade padrão da indústria
+- **Integração**: Nossos microservices expõem `/metrics` endpoints
+- **Responsabilidades**: Coleta de métricas, visualização, alerting
+
+#### **Event Infrastructure** (External Infrastructure)
+- **Sistema**: RabbitMQ Message Broker
+- **Justificativa**: Infrastructure as a Service para event-driven integration
+- **Integração**: Nossos contexts publicam/consomem eventos via AMQP
+- **Responsabilidades**: Message routing, persistence, dead letter queues
+
+## **Justificativa Arquitetural**
+
+**Por que apenas 2 Bounded Contexts próprios?**
+- **DDD Principle**: Bounded contexts devem representar código/domínio que **controlamos e evoluímos**
+- **Business Focus**: Nosso core domain é **financial transaction processing**, não identity ou monitoring
+- **Separation of Concerns**: Sistemas externos especializados (Keycloak, Prometheus) são mais maduros que código próprio
+- **Maintainability**: Focar no que agregamos valor (Transaction + Consolidation logic)
 
 ### Requisitos Funcionais
 | Requisito | História Refinada | Justificativa de Negócio | Status |
@@ -1581,66 +1601,81 @@ sequenceDiagram
 
 ## Diretrizes de Desenvolvimento
 
-### Estrutura Mono-repo
+### Estrutura Mono-repo com Microservices
 
-Este projeto utiliza **arquitetura mono-repo** para facilitar desenvolvimento, testes e deployment coordenado dos bounded contexts relacionados:
+Este projeto utiliza **arquitetura mono-repo** que contém **múltiplos microservices** implementando diferentes bounded contexts. É importante esclarecer a distinção:
 
+**MONO-REPO** ≠ **MONOLITO**
+**MONO-REPO** = **Multiple Microservices in Single Repository**
+
+#### Conceitos Fundamentais:
+
+**Mono-repo (Repository Structure):**
+- **Single Git Repository** contendo todo o sistema
+- **Shared tooling** (Docker, Makefile, configs, testes)
+- **Coordinated deployment** e versionamento
+- **Unified documentation** e diagramas
+
+**Microservices (Runtime Architecture):**
+- **Independent deployable services** (TransactionsApi, ConsolidationsApi)
+- **Separate containers** com portas diferentes (5001, 5002)
+- **Independent scaling** via multiple instances
+- **Database per service** (transactions_db, consolidations_db)
+- **Bounded context isolation** por domínio de negócio
+
+#### Detalhamento da Arquitetura Mono-repo + Microservices:
+
+**Runtime View (Como os serviços executam):**
+```
+┌─────────────────────┐    ┌─────────────────────┐    ┌─────────────────────┐
+│ TransactionsApi:5001│    │ ConsolidationsApi:5002│   │ Keycloak:8080      │
+│ (Container 1)       │    │ (Container 2)         │   │ (Container 3)      │
+│ - .NET 9 Web API    │    │ - .NET 9 Web API      │   │ - Java/Keycloak    │
+│ - Flows Pattern     │    │ - Repository Pattern   │   │ - OAuth2 Provider  │
+│ - PostgreSQL DB     │    │ - PostgreSQL DB       │   │ - PostgreSQL DB    │
+│ - RabbitMQ Client   │    │ - RabbitMQ Consumer   │   │ - JWT Issuer       │
+└─────────────────────┘    └─────────────────────┘    └─────────────────────┘
+         │                           │                           │
+         └───────────────┬───────────────────────────┬───────────┘
+                         │                           │
+                    ┌─────────────────────┐    ┌─────────────────────┐
+                    │ KrakenD:8080       │    │ RabbitMQ:5672      │
+                    │ (Container 4)      │    │ (Container 5)      │
+                    │ - Go API Gateway   │    │ - Erlang Broker    │
+                    │ - JWT Validation   │    │ - Event Bus        │
+                    │ - Load Balancing   │    │ - Message Queues   │
+                    └─────────────────────┘    └─────────────────────┘
+```
+
+**Repository Structure (Como o código está organizado):**
 ```
 cash-flow-system/                    # MONO-REPO ROOT
 │
-├── BOUNDED CONTEXTS (Microservices)
+├── MICROSERVICES (Independent Deployable Units)
 │   src/
-│   ├── TransactionsApi/             # Transaction Management Context
-│   │   ├── Handlers/               # HTTP endpoints (Minimal APIs)
-│   │   ├── Flows/                  # Business orchestration
-│   │   ├── Logics/                 # Domain rules & validation
-│   │   ├── Adapters/               # DTO ↔ Domain ↔ Event mapping
-│   │   ├── Gateways/               # Infrastructure access
-│   │   ├── Protocols/              # Low-level contracts
-│   │   └── Dockerfile              # Container definition
+│   ├── TransactionsApi/             # MICROSERVICE 1
+│   │   ├── Dockerfile              # → Container Image
+│   │   ├── Program.cs              # → Web API Bootstrap
+│   │   ├── Handlers/               # → HTTP Endpoints
+│   │   ├── Flows/                  # → Business Orchestration
+│   │   └── appsettings.json        # → Service Configuration
 │   │
-│   └── ConsolidationsApi/           # Financial Consolidation Context
-│       ├── Controllers/            # HTTP endpoints (Controller-based)
-│       ├── Services/               # Domain business logic
-│       ├── Repositories/           # Data access layer
-│       ├── Models/                 # Domain entities
-│       ├── BackgroundServices/     # Event consumers
-│       └── Dockerfile              # Container definition
+│   └── ConsolidationsApi/           # MICROSERVICE 2
+│       ├── Dockerfile              # → Container Image
+│       ├── Program.cs              # → Web API Bootstrap
+│       ├── Controllers/            # → HTTP Endpoints
+│       ├── Services/               # → Business Logic
+│       └── appsettings.json        # → Service Configuration
 │
-├── SHARED TESTING INFRASTRUCTURE
-│   tests/
-│   ├── k6/                         # Load & performance tests
-│   │   ├── peak-load-test.js      # NFR validation
-│   │   ├── consistency-test.js     # Data integrity tests
-│   │   └── independence-test.js    # Service isolation tests
-│   ├── TransactionsApi.Tests/      # Unit & integration tests
-│   └── ConsolidationsApi.Tests/    # Unit & integration tests
-│
-├── SHARED TOOLING & MIGRATION
-│   tools/
-│   ├── TransactionsMigrator/       # DB schema management
-│   └── ConsolidationsMigrator/     # DB schema management
-│
-├── SHARED CONFIGURATION
-│   config/
-│   ├── krakend/                    # API Gateway settings
-│   ├── haproxy/                    # Load balancer config
-│   ├── keycloak/                   # Identity provider setup
-│   ├── prometheus/                 # Monitoring configuration
-│   ├── grafana/                    # Dashboard definitions
-│   └── rabbitmq/                   # Message broker settings
-│
-├── SHARED DOCUMENTATION
-│   docs/
-│   ├── diagrams/                   # 24+ Mermaid diagrams
-│   └── k6/                         # Performance test results
-│
-├── ORCHESTRATION & DEPLOYMENT
-│   ├── docker-compose.yml          # Multi-service orchestration
-│   ├── Makefile                    # Development workflow
-│   ├── CashFlowSystem.sln          # .NET solution file
-│   └── README.md                   # Comprehensive documentation
+├── SHARED INFRASTRUCTURE (Mono-repo Benefits)
+│   ├── docker-compose.yml          # → Orchestrates ALL microservices
+│   ├── Makefile                    # → Builds/tests ALL services
+│   ├── config/                     # → Shared configurations
+│   ├── tests/k6/                   # → End-to-end testing
+│   └── docs/                       # → Unified documentation
 ```
+
+#### Vantagens desta Abordagem:
 
 #### **Benefícios da Estrutura Mono-repo**
 
