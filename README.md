@@ -1,59 +1,144 @@
 # Sistema de Fluxo de Caixa
-### Arquitetura de Microsserviços Enterprise para Processamento de Transações Financeiras
+## Arquitetura de Microsserviços Enterprise para Processamento de Transações Financeiras
 
-[![.NET](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14-blue.svg)](https://www.postgresql.org/)
-[![RabbitMQ](https://img.shields.io/badge/RabbitMQ-3.13-orange.svg)](https://www.rabbitmq.com/)
-[![Docker](https://img.shields.io/badge/Docker-Compose-blue.svg)](https://docs.docker.com/compose/)
-[![Keycloak](https://img.shields.io/badge/Keycloak-25.0.6-red.svg)](https://www.keycloak.org/)
-[![Grafana](https://img.shields.io/badge/Grafana-11.2.2-orange.svg)](https://grafana.com/)
-[![Prometheus](https://img.shields.io/badge/Prometheus-2.45-red.svg)](https://prometheus.io/)
 
----
+### Início Rápido (TL;DR)
+- Pré-requisitos: Docker + Docker Compose, make.
+- Estrutura: monorepo com múltiplos microserviços (TransactionsApi, ConsolidationsApi) e infraestrutura auxiliar.
+- Subir tudo:
+```
+make build && make up
+```
+- Obter token via Gateway:
+```shell
+curl -X POST http://localhost:8000/api/v1/auth/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d 'grant_type=password&client_id=cash-flow-api&client_secret=cash-flow-secret-2024&username=merchant1&password=merchant123'
+```
+- Criar transação:
+```shell
+curl -X POST 'http://localhost:8000/api/v1/merchants/merchant_1/transactions' \
+  -H 'Authorization: Bearer <TOKEN>' \
+  -H 'Content-Type: application/json' \
+  -d '{"Type":"CREDITO","Amount":100.5,"Description":"Pedido 123"}'
+```
+- Consultar consolidação diária:
+```shell
+curl -X GET 'http://localhost:8000/api/v1/merchants/merchant_1/consolidations/daily?date=2024-09-20' \
+  -H 'Authorization: Bearer <TOKEN>'
+```
+
 
 ## Índice
-1. [Visão Geral e Contexto de Negócio](#visão-geral-e-contexto-de-negócio)
-2. [Arquitetura da Solução](#arquitetura-da-solução)
-3. [Biblioteca de Diagramas](#biblioteca-de-diagramas)
-4. [Funcionalidades Principais](#funcionalidades-principais)
-5. [Evidências de NFR e Performance](#evidências-de-nfr-e-performance)
-6. [Início Rápido](#início-rápido)
-7. [Exemplos de Uso da API](#exemplos-de-uso-da-api)
-8. [Estratégia de Testes](#estratégia-de-testes)
-9. [Decisões Arquiteturais](#decisões-arquiteturais)
-10. [Monitoramento e Observabilidade](#monitoramento-e-observabilidade)
-11. [Modelo de Segurança](#modelo-de-segurança)
-12. [Diretrizes de Desenvolvimento](#diretrizes-de-desenvolvimento)
-13. [Prontidão para Produção](#prontidão-para-produção)
-14. [Solução de Problemas](#solução-de-problemas)
-15. [Roadmap e Melhorias Futuras](#roadmap-e-melhorias-futuras)
+1. [Início Rápido (TL;DR)](#início-rápido-tldr)
+2. [Visão Geral e Contexto de Negócio](#visão-geral-e-contexto-de-negócio)
+3. [Mapa de Capacidades de Negócio (DDD/TOGAF/BIAN)](#mapa-de-capacidades-de-negócio-dddtogafbian)
+4. [Requisitos (Funcionais e Não-Funcionais)](#requisitos-funcionais)
+5. [Arquitetura da Solução](#arquitetura-da-solução)
+6. [Biblioteca de Diagramas](#biblioteca-de-diagramas)
+7. [Principais Fluxos de Sequencia](#principais-fluxos-de-sequencia)
+8. [Arquitetura de Segurança](#arquitetura-de-segurança)
+9. [Arquitetura de Monitoramento](#arquitetura-de-monitoramento)
+10. [Modelo de Dados](#modelo-de-dados)
+11. [Exemplos de Uso da API](#exemplos-de-uso-da-api)
+12. [Estratégia de Testes](#estratégia-de-testes)
+13. [Resultados e Evidências (NFRs)](#resultados-e-evidências-nfrs)
+14. [Pipeline DevOps](#pipeline-devops)
+15. [Diretrizes de Desenvolvimento](#diretrizes-de-desenvolvimento)
+16. [Solução de Problemas](#solução-de-problemas)
+17. [Decisões Arquiteturais](#decisões-arquiteturais)
+18. [Roadmap e Melhorias Futuras](#roadmap-e-melhorias-futuras)
 
 ## Visão Geral e Contexto de Negócio
 
 ### Domínio de Negócio
 O **Sistema de Fluxo de Caixa** é uma plataforma de processamento de transações financeiras de nível enterprise, projetada para gerenciamento de fluxo de caixa de comerciantes. O sistema processa transações financeiras em tempo real enquanto fornece relatórios consolidados diários com garantias de consistência eventual.
 
-### Mapeamento de Capacidades de Negócio (Bounded Contexts)
+## Mapa de Capacidades de Negócio (DDD/TOGAF/BIAN)
 
-As capacidades foram identificadas através de **Event Storming** e mapeadas para **Bounded Contexts** reais implementados seguindo princípios de **DDD**, **TOGAF** e **BIAN**:
+Como ler este mapa:
+- DDD: classificamos domínios como Core, Supporting ou Generic.
+- TOGAF: tratamos capacidades como “o que o negócio precisa fazer”, independentes de sistema.
+- BIAN: usamos referências funcionais de alto nível como orientação de taxonomia (não estritas).
 
-## **Bounded Contexts Implementados (Nosso Código)**
+### Taxonomia de Domínios e Subdomínios
+- Domínio Core: Operações Financeiras do Comerciante
+  - Subdomínios:
+    - Gestão de Transações (crédito/débito)
+    - Consolidação Financeira e Gestão de Saldo diário
+    - Relato/Consulta Gerencial
+- Domínio Supporting: Risco, Auditoria e Compliance
+  - Subdomínios:
+    - Auditoria e Conciliação
+    - Evidências e trilhas de auditoria
+- Domínios Genéricos/Externos: Identidade e Observabilidade
+  - Subdomínios:
+    - Identity & Access Management (Keycloak)
+    - Monitoring & Observability (Prometheus/Grafana)
 
-#### **Transaction Management** (Core Domain)
-- **Capacidade**: Gestão de Movimentação Financeira
-- **Justificativa**: Registro de entradas e saídas de dinheiro para acompanhar o fluxo de caixa operacional
-- **Implementação**: `src/TransactionsApi/` com padrão **Flows**
-- **Responsabilidades**: Validação, persistência e publicação de eventos de domínio
-- **Características**: Alta consistência, ACID, performance otimizada para escritas
+### Capability Map (Negócio ↔ Contexto)
 
-#### **Financial Consolidation** (Supporting Domain)
-- **Capacidade**: Consolidação de Saldos e Relatórios
-- **Justificativa**: Consultar saldo diário consolidado para acompanhar faturamento e performance financeira da loja
-- **Implementação**: `src/ConsolidationsApi/` com padrão **Repository + EF Core**
-- **Responsabilidades**: Consumo de eventos, agregação e consultas analíticas
-- **Características**: Consistência eventual, otimizado para leitura e agregações
+| Capacidade de Negócio | DDD | Referência BIAN (alto nível) | Bounded Context | Principais Processos | KPIs/Indicadores |
+|---|---|---|---|---|---|
+| Gestão de Transações | Core | Cash Management / Account Management | Transaction Management | Registrar transações, validar regras, publicar eventos | Latência p95, Throughput, Taxa de erro |
+| Consolidação Financeira / Gestão de Saldo | Supporting | Financial Control / Balance Reporting | Financial Consolidation | Agregar lançamentos por merchant e data, atualizar saldos | Tempo de convergência, Taxa de consistência |
+| Consulta e Relato Gerencial | Supporting | Reporting | Financial Consolidation | Consultar consolidado diário, extrair visão gerencial | p95 leitura, Disponibilidade |
+| Auditoria e Compliance | Supporting | Compliance / Audit Trail | Financial Consolidation | Evidências de agregação, reconciliação e rastreabilidade | Violações de consistência, Itens em DLQ |
+| Identidade e Acesso | Generic/External | Identity & Access Management | External (Keycloak) | Autenticação, autorização, emissão/validação de tokens | Sucesso de autenticação, Falhas por escopo |
+| Observabilidade | Generic/External | IT Operations / Monitoring | External (Prometheus/Grafana) | Coleta de métricas, dashboards, alertas | SLOs, Alertas, Uptime |
 
-## **Sistemas Externos (Não são Bounded Contexts Nossos)**
+### Enquadramento das Capacidades no Sistema
+- Cada capacidade é suportada por um bounded context específico ou por um sistema externo especializado.
+- As capacidades Core orientam requisitos de consistência e latência; as Supporting aceitam consistência eventual para otimizar leitura e relatórios.
+- Capacidades genéricas são explicitamente terceirizadas para reduzir escopo e risco operacional.
+
+### Mapeamento de Capacidades de Negócio
+
+As capacidades foram identificadas por meio de **Event Storming** e mapeadas para **Bounded Contexts** conforme princípios de **DDD**, com alinhamento a **TOGAF/BIAN**. Abaixo, capacidades de negócio (o que o negócio precisa fazer) e sua materialização em bounded contexts:
+
+- Capacidade: Gestão de Transações (Movimentação Financeira)
+  - Objetivo: Registrar débitos e créditos para controlar entradas/saídas em tempo real
+  - Bounded Context: Transaction Management (Core Domain)
+  - Implementação: `src/TransactionsApi/` (padrão Flows)
+
+- Capacidade: Consolidação Financeira / Gestão de Saldo
+  - Objetivo: Consolidação diária para acompanhar faturamento e posição financeira
+  - Bounded Context: Financial Consolidation (Supporting Domain)
+  - Implementação: `src/ConsolidationsApi/` (Repository + EF Core)
+
+- Capacidade: Consulta e Relato Gerencial
+  - Objetivo: Consultar consolidado e gerar informações de acompanhamento
+  - Bounded Context: Financial Consolidation (mesmo contexto de leitura)
+
+- Capacidade: Auditoria e Compliance
+  - Objetivo: Oferecer rastreabilidade e insumos para conciliação/auditoria
+  - Bounded Context: Financial Consolidation (consultas e histórico)
+
+Notas:
+- Gestão Multi-tenant é um comportamento de aplicação/infra (segurança/identidade) e não capacidade de negócio. Está centralizada em Keycloak/Gateway.
+- Identity & Monitoring são capacidades externas ao nosso domínio (terceirizadas para sistemas maduros).
+
+## Bounded Contexts ↔ Implementações
+
+#### Transaction Management (Core Domain)
+- Foco: consistência e performance de escrita (ACID)
+- Implementação: Flows
+- Localização no repositório:
+```shell
+src/TransactionsApi/
+```
+- Responsabilidades: validação, persistência, publicação de eventos
+
+#### Financial Consolidation (Supporting Domain)
+- Foco: agregação e consultas analíticas (consistência eventual)
+- Implementação: Repository + EF Core
+- Localização no repositório:
+```shell
+src/ConsolidationsApi/
+```
+- Responsabilidades: consumo de eventos, consolidação diária, leitura
+
+## Sistemas Externos (Bounded Contexts Externos)
 
 #### **Identity & Access Management** (External System)
 - **Sistema**: Keycloak (OAuth2/OIDC Provider)
@@ -84,10 +169,10 @@ As capacidades foram identificadas através de **Event Storming** e mapeadas par
 ### Requisitos Funcionais
 | Requisito | História Refinada | Justificativa de Negócio | Status |
 |-----------|-------------------|--------------------------|---------|
-| **RF-001** | Como **comerciante**, quero **registrar transações de débito/crédito** para **controlar entradas e saídas de dinheiro em tempo real** | Necessário para gestão operacional diária e controle financeiro | Implementado |
-| **RF-002** | Como **analista financeiro**, quero **consultar saldo diário consolidado** para **acompanhar performance e faturamento da loja** | Relatórios gerenciais essenciais para tomada de decisão estratégica | Implementado |
-| **RF-003** | Como **comerciante**, quero **visualizar histórico de transações** para **realizar conciliação financeira e auditoria** | Atendimento a requisitos regulatórios e controles internos | Implementado |
-| **RF-004** | Como **sistema**, quero **segregar dados por comerciante** para **garantir isolamento e privacidade entre tenants** | Modelo de negócio multi-tenant com segurança de dados | Implementado |
+| **RF-001** | Como comerciante, quero registrar transações de débito/crédito para controlar entradas e saídas de dinheiro em tempo real | Necessário para gestão operacional diária e controle financeiro | Implementado |
+| **RF-002** | Como analista financeiro, quero consultar saldo diário consolidado para poder acompanhar o faturamento da loja | Relatórios gerenciais essenciais para tomada de decisão estratégica | Implementado |
+| **RF-003** | Como comerciante, quero visualizar histórico de transações para realizar conciliação financeira e auditoria | Atender requisitos regulatórios e suportar controles internos | Implementado |
+| **RF-004** | Como sistema, quero segregar dados por comerciante para garantir isolamento e privacidade entre tenants | Suportar operação multi-tenant com segurança por isolamento | Implementado |
 
 ### Requisitos Não-Funcionais
 | Requisito | Critério de Aceitação | Justificativa Técnica | Status |
@@ -109,6 +194,34 @@ As capacidades foram identificadas através de **Event Storming** e mapeadas par
 - **Segurança Centralizada**: Validação JWT no API Gateway (KrakenD) com Keycloak. Serviços em redes privadas sem autenticação interna
 - **Migrações de Banco**: Executam em containers dedicados conectando diretamente aos bancos (sem PgBouncer) antes do provisionamento das APIs
 
+### Contrato de Eventos (Estado Atual)
+- Evento: `TransactionCreatedEvent` (integração entre Transactions e Consolidations).
+- Exchange: `cash-flow-exchange` (topic), routing key: `transaction.created`.
+- Formato JSON atual (enum serializado como número):
+```json
+{
+  "TransactionId": "f0c5d2b0-3c0f-4a0b-9f1b-1234567890ab",
+  "MerchantId": "merchant_1",
+  "Type": 1,
+  "Amount": 100.50,
+  "DateTime": "2024-09-20T12:34:56.789Z",
+  "CreatedAt": "2024-09-20T12:34:56.789Z"
+}
+```
+- Identificadores do contrato:
+```shell
+Evento: TransactionCreatedEvent
+Exchange: cash-flow-exchange
+Routing Key: transaction.created
+```
+- Observações importantes (atual):
+  - Enum `Type` é serializado como número (`System.Text.Json` padrão).
+  - Publicação é fire-and-forget, sem publisher confirms.
+  - Mensagens são publicadas sem `DeliveryMode` persistente (transientes).
+  - DLQ configurada e operante no consumidor.
+
+> Nota: há um item de melhoria proposto para usar enums como string e habilitar confirmações/persistência de mensagens. Enquanto não aplicado no código, este é o comportamento efetivo.
+
 ## Domain-Driven Design (DDD)
 
 ### Event Storming - Descoberta do Domínio
@@ -117,8 +230,7 @@ O desenvolvimento do sistema foi iniciado com uma sessão de **Event Storming** 
 
 ![Event Storming](docs/diagrams/images/00-event-storming.png)
 
-<details>
-<summary>Ver análise completa de Event Storming (clique para expandir)</summary>
+#### Análise completa de Event Storming
 
 **Resultado da Sessão de Event Storming:**
 
@@ -248,7 +360,7 @@ graph LR
   end
 ```
 
-</details>
+
 
 ### Linguagem Ubíqua (Ubiquitous Language)
 
@@ -301,8 +413,7 @@ O sistema implementa uma **arquitetura de microsserviços orientada a eventos** 
 
 ![Padrões Arquiteturais](docs/diagrams/images/01-architecture-patterns.png)
 
-<details>
-<summary>Ver detalhes dos padrões arquiteturais (clique para expandir)</summary>
+#### Detalhes dos padrões arquiteturais
 
 **Padrões Implementados:**
 - **Microservices Pattern**: Serviços independentes com responsabilidades bem definidas
@@ -312,7 +423,7 @@ O sistema implementa uma **arquitetura de microsserviços orientada a eventos** 
 - **Circuit Breaker**: Resilência através de load balancers com health checks
 - **Saga Pattern**: Transações distribuídas via eventos (eventual consistency)
 
-</details>
+
 
 ### Características Arquiteturais Principais
 
@@ -325,10 +436,10 @@ A arquitetura é dividida em **dois domínios principais**, cada um com suas res
 Esta separação permite que cada serviço evolua independentemente, seja escalado conforme necessidade e mantenha sua própria stack tecnológica otimizada para seu contexto de uso.
 
 #### Comunicação Assíncrona
-O sistema utiliza **RabbitMQ** como message broker para comunicação entre serviços, implementando o padrão **Publisher/Subscriber**. Isso garante:
+O sistema utiliza **RabbitMQ** como message broker para comunicação entre serviços, implementando o padrão **Publisher/Subscriber**:
 
 - **Desacoplamento temporal**: Serviços não precisam estar online simultaneamente
-- **Resiliência**: Mensagens persistem mesmo com falhas de rede ou serviços
+- **Resiliência (estado atual)**: DLQ configurada no consumidor. Publicação é fire-and-forget (sem confirms) e mensagens são transientes (não persistentes) — persistência/confirmations estão planejadas.
 - **Escalabilidade**: Processamento assíncrono permite maior throughput
 
 #### Persistência Desacoplada
@@ -343,8 +454,7 @@ A arquitetura implementa **defesa em profundidade** através de:
 
 ![Segurança de Rede](docs/diagrams/images/05-network-security.png)
 
-<details>
-<summary>Ver arquitetura de segurança detalhada (clique para expandir)</summary>
+#### Arquitetura de segurança detalhada
 
 **Camadas de Segurança Implementadas:**
 
@@ -368,7 +478,7 @@ A arquitetura implementa **defesa em profundidade** através de:
    - Communication via service names (DNS interno)
    - Database access apenas via connection pooling
 
-</details>
+
 
 **Benefícios da Arquitetura de Segurança:**
 - **Superfície de Ataque Reduzida**: Apenas o gateway é publicamente acessível
@@ -396,8 +506,7 @@ A arquitetura implementa **defesa em profundidade** através de:
 
 ![Arquitetura de Componentes](docs/diagrams/images/04-components.png)
 
-<details>
-<summary>Ver diagrama Mermaid (clique para expandir)</summary>
+#### Diagrama Mermaid
 
 ```mermaid
 flowchart LR
@@ -460,7 +569,7 @@ flowchart LR
   Gr --> P
 ```
 
-</details>
+
 
 ## Biblioteca de Diagramas
 
@@ -474,13 +583,17 @@ Este projeto possui uma **biblioteca completa de diagramas** organizados sequenc
 
 ### Modelo C4 (Context, Containers, Components, Code)
 
-O projeto segue o **modelo C4** para documentação arquitetural, proporcionando diferentes níveis de abstração para diferentes audiências:
+O projeto segue o **modelo C4** para documentação arquitetural, proporcionando diferentes níveis de abstração para diferentes audiências.
+
+Notas de leitura:
+- L1 (Contexto): bounded contexts (incluindo externos) e seus relacionamentos de negócio.
+- L2 (Containers): containers do nosso sistema (boundary do sistema) e dependências externas.
+- L3/L4: níveis detalhados (componentes/código) são ilustrativos; recomenda-se automação para mantê-los atualizados.
 
 #### C4 Level 1 - System Context
 ![C4 System Context](docs/diagrams/images/c4-01-system-context.png)
 
-<details>
-<summary>Ver contexto do sistema (clique para expandir)</summary>
+#### Contexto do sistema
 
 **Personas e Sistemas Externos:**
 - **Merchants (Comerciantes)**: Usuários finais que registram transações
@@ -491,13 +604,12 @@ O projeto segue o **modelo C4** para documentação arquitetural, proporcionando
 **Fronteiras do Sistema:**
 O Cash Flow System atua como uma **plataforma centralizada** de processamento financeiro, integrando-se com sistemas de identity management (Keycloak) e fornecendo APIs REST para diferentes tipos de usuários.
 
-</details>
 
-#### C4 Level 2 - Container View
+
+#### C4 Level 2 - Containers (Boundary do Sistema)
 ![C4 Container View](docs/diagrams/images/c4-02-container.png)
 
-<details>
-<summary>Ver arquitetura de containers (clique para expandir)</summary>
+#### Arquitetura de containers
 
 **Containers Identificados:**
 - **KrakenD API Gateway**: Ponto de entrada único com roteamento inteligente
@@ -511,15 +623,19 @@ O Cash Flow System atua como uma **plataforma centralizada** de processamento fi
 **Relações e Protocolos:**
 Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP, SQL) garantindo baixo acoplamento e alta coesão.
 
-</details>
+
+
+## Principais Fluxos de Sequencia
+- Criação de Transação: docs/diagrams/images/08a-sequence-create-transaction.png
+- Leitura de Consolidação Diária: docs/diagrams/images/08b-sequence-read-consolidation.png
+- Consumo de Evento de Transação: docs/diagrams/images/08c-sequence-event-consumption.png
 
 #### C4 Level 3 - Component View
 
 **Transactions Service Components:**
 ![C4 Transactions Components](docs/diagrams/images/c4-03a-transactions-components.png)
 
-<details>
-<summary>Ver componentes do serviço de transações (clique para expandir)</summary>
+#### Componentes do serviço de transações
 
 **Padrão "Flows" Implementado:**
 - **TransactionHandler**: Endpoints HTTP (Minimal APIs)
@@ -534,13 +650,12 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 - **Flexibilidade**: Fácil modificação de regras de negócio
 - **Performance**: Acesso direto a dados sem overhead de ORM
 
-</details>
+
 
 **Consolidations Service Components:**
 ![C4 Consolidations Components](docs/diagrams/images/c4-03b-consolidations-components.png)
 
-<details>
-<summary>Ver componentes do serviço de consolidações (clique para expandir)</summary>
+#### Componentes do serviço de consolidações
 
 **Padrão Repository Implementado:**
 - **ConsolidationController**: Endpoints HTTP (Controller-based)
@@ -554,15 +669,14 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 - **Produtividade**: EF Core oferece APIs ricas para consultas
 - **Manutenibilidade**: Estrutura familiar para a maioria dos desenvolvedores
 
-</details>
+
 
 #### C4 Level 4 - Code View
 
 **Transactions Code Structure:**
 ![C4 Transactions Code](docs/diagrams/images/c4-04a-transactions-code.png)
 
-<details>
-<summary>Ver estrutura de código - Transactions (clique para expandir)</summary>
+#### Estrutura de código - Transactions
 
 **Interfaces e Contratos:**
 - `ITransactionFlow`, `ITransactionLogic`, `ITransactionAdapter`
@@ -574,13 +688,12 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 - `TransactionType`: Enum (Credit/Debit)
 - DTOs: `CreateTransactionRequest`, `TransactionResponse`
 
-</details>
+
 
 **Consolidations Code Structure:**
 ![C4 Consolidations Code](docs/diagrams/images/c4-04b-consolidations-code.png)
 
-<details>
-<summary>Ver estrutura de código - Consolidations (clique para expandir)</summary>
+#### Estrutura de código - Consolidations
 
 **Interfaces e Contratos:**
 - `IConsolidationService`, `IConsolidationRepository`
@@ -591,7 +704,7 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 - `TransactionCreatedEvent`: Evento de integração
 - DTOs: `DailyConsolidationResponse`
 
-</details>
+
 
 ### Diagramas de Fluxo e Sequência
 
@@ -600,8 +713,7 @@ Os diagramas de sequência mostram as **interações detalhadas** entre componen
 #### Sequência de Leitura de Consolidação
 ![Sequência - Read Consolidation](docs/diagrams/images/08b-sequence-read-consolidation.png)
 
-<details>
-<summary>Ver sequência de leitura detalhada (clique para expandir)</summary>
+#### Sequência de leitura detalhada
 
 **Fluxo de Consulta de Consolidados:**
 1. Cliente autentica via Gateway (JWT validation)
@@ -619,13 +731,12 @@ Os diagramas de sequência mostram as **interações detalhadas** entre componen
 - **Validação de entrada**: Data validation e business rules
 - **Transformação de dados**: Entity to DTO mapping
 
-</details>
+
 
 #### Sequência de Consumo de Eventos
 ![Sequência - Event Consumption](docs/diagrams/images/08c-sequence-event-consumption.png)
 
-<details>
-<summary>Ver sequência de consumo de eventos (clique para expandir)</summary>
+#### Sequência de consumo de eventos
 
 **Fluxo de Processamento Assíncrono:**
 1. **Background Service** inicia e conecta ao RabbitMQ
@@ -643,7 +754,7 @@ Os diagramas de sequência mostram as **interações detalhadas** entre componen
 - **Error recovery**: DLQ permite investigação de falhas
 - **Monitoring**: Métricas de queue depth e processing time
 
-</details>
+
 
 ### Fundamentos Teóricos
 - **[cap-theorem.mmd](docs/diagrams/cap-theorem.mmd)**: Análise do Teorema CAP com métricas reais
@@ -654,39 +765,35 @@ Os diagramas de sequência mostram as **interações detalhadas** entre componen
 #### Dashboard de Evidências de NFR
 ![NFR Evidence Dashboard](docs/diagrams/images/13-nfr-evidence-dashboard.png)
 
-<details>
-<summary>Ver dashboard completo de NFR (clique para expandir)</summary>
+#### Dashboard completo de NFR
 
 Consulte o diagrama interativo completo em: [13-nfr-evidence-dashboard.mmd](docs/diagrams/13-nfr-evidence-dashboard.mmd)
 
-</details>
+
 
 #### Performance Benchmarks
 ![Performance Benchmarks](docs/diagrams/images/14-performance-benchmarks.png)
 
-<details>
-<summary>Ver benchmarks detalhados (clique para expandir)</summary>
+#### Benchmarks detalhados
 
 Consulte a análise completa em: [14-performance-benchmarks.mmd](docs/diagrams/14-performance-benchmarks.mmd)
 
-</details>
+
 
 #### Scorecard de Métricas (Nota A+)
 ![Metrics Scorecard](docs/diagrams/images/16-metrics-scorecard.png)
 
-<details>
-<summary>Ver scorecard completo (clique para expandir)</summary>
+#### Scorecard completo
 
 Consulte o scorecard detalhado em: [16-metrics-scorecard.mmd](docs/diagrams/16-metrics-scorecard.mmd)
 
-</details>
+
 
 ### Sequência do Caso de Uso "Criar Transação"
 
 ![Sequência - Criar Transação](docs/diagrams/images/08a-sequence-create-transaction.png)
 
-<details>
-<summary>Ver sequência detalhada (clique para expandir)</summary>
+#### Sequência detalhada
 
 ```mermaid
 sequenceDiagram
@@ -716,14 +823,13 @@ sequenceDiagram
   Handler-->>Client: 201 Created
 ```
 
-</details>
+
 
 ### Fluxo Assíncrono Completo (Eventos, Consumo e DLQ)
 
 ![Fluxo Assíncrono](docs/diagrams/images/09-async-flow.png)
 
-<details>
-<summary>Ver fluxo assíncrono detalhado (clique para expandir)</summary>
+#### Fluxo assíncrono detalhado
 
 ```mermaid
 flowchart LR
@@ -775,14 +881,13 @@ flowchart LR
   class DLX,DLQ,CError error
 ```
 
-</details>
+
 
 ### Visão de Implantação (Redes e Segurança)
 
 ![Deployment e Redes](docs/diagrams/images/06-deployment.png)
 
-<details>
-<summary>Ver topologia de rede detalhada (clique para expandir)</summary>
+#### Topologia de rede detalhada
 
 ```mermaid
 flowchart LR
@@ -821,7 +926,7 @@ flowchart LR
   Gr --> P
 ```
 
-</details>
+
 
 ## Funcionalidades Principais
 
@@ -866,7 +971,7 @@ Content-Type: application/json
 }
 ```
 
-## Evidências de NFR e Performance
+## Resultados e Evidências (NFRs)
 
 ### Resultados dos Testes de Carga (k6)
 
@@ -917,23 +1022,21 @@ O sistema implementa uma **estratégia PA-EL** (Disponibilidade + Particionament
 
 ![Análise CAP Theorem](docs/diagrams/images/cap-theorem.png)
 
-<details>
-<summary>Ver análise CAP detalhada (clique para expandir)</summary>
+#### Análise CAP detalhada
 
 Consulte o diagrama completo em: [cap-theorem.mmd](docs/diagrams/cap-theorem.mmd)
 
-</details>
+
 
 #### Análise PACELC Theorem
 
 ![Análise PACELC Theorem](docs/diagrams/images/pacelc-theorem.png)
 
-<details>
-<summary>Ver análise PACELC detalhada (clique para expandir)</summary>
+#### Análise PACELC detalhada
 
 Consulte o diagrama completo em: [pacelc-theorem.mmd](docs/diagrams/pacelc-theorem.mmd)
 
-</details>
+
 
 ### Arquitetura de Monitoramento
 
@@ -941,8 +1044,7 @@ O sistema implementa uma **stack completa de observabilidade** seguindo as melho
 
 ![Arquitetura de Monitoramento](docs/diagrams/images/10-monitoring-architecture.png)
 
-<details>
-<summary>Ver arquitetura de monitoramento detalhada (clique para expandir)</summary>
+#### Arquitetura de monitoramento detalhada
 
 **Componentes da Stack de Observabilidade:**
 
@@ -974,14 +1076,13 @@ O sistema implementa uma **stack completa de observabilidade** seguindo as melho
 - **Latency SLO**: p95 < 2000ms para transactions, p95 < 3000ms para consolidations
 - **Error Rate SLO**: ≤1% para transactions, ≤5% para consolidations durante picos
 
-</details>
+
 
 ### Estratégia de Testes Implementada
 
 ![Estratégia de Testes](docs/diagrams/images/11-testing-strategy.png)
 
-<details>
-<summary>Ver estratégia de testes detalhada (clique para expandir)</summary>
+#### Estratégia de testes detalhada
 
 **Pirâmide de Testes Implementada:**
 
@@ -989,7 +1090,10 @@ O sistema implementa uma **stack completa de observabilidade** seguindo as melho
    - **Coverage**: Flows, Logics, Adapters, Services
    - **Frameworks**: xUnit, Moq para mocking
    - **Foco**: Regras de negócio e transformações de dados
-   - **Execução**: `make test` - pipeline automatizado
+   - **Execução**:
+```
+make test
+```
 
 2. **Testes de Integração** (Meio da Pirâmide):
    - **Database Integration**: Testes com TestContainers
@@ -1015,14 +1119,13 @@ O sistema implementa uma **stack completa de observabilidade** seguindo as melho
 - **Load Tests**: SLOs atendidos sob carga esperada
 - **Stress Tests**: Degradação graceful, sem data loss
 
-</details>
+
 
 ### Pipeline DevOps
 
 ![Pipeline DevOps](docs/diagrams/images/12-devops-pipeline.png)
 
-<details>
-<summary>Ver pipeline DevOps detalhado (clique para expandir)</summary>
+#### Pipeline DevOps detalhado
 
 **Estágios do Pipeline:**
 
@@ -1060,9 +1163,9 @@ O sistema implementa uma **stack completa de observabilidade** seguindo as melho
 - **Automated Testing**: 80%+ automation coverage
 - **Security First**: Security scanning em cada estágio
 
-</details>
 
-## Início Rápido
+
+## Operação (Execução)
 
 ### Pré-requisitos
 - Docker e Docker Compose
@@ -1194,11 +1297,11 @@ make test                    # Executa todos os testes unitários
 
 | Teste | Propósito | Comando | Duração |
 |-------|-----------|---------|---------|
-| **Health** | Validar autenticação | `make load-test-health` | 30s |
-| **Quick** | Sanity check funcional | `make load-test-quick` | 34s |
-| **Peak** | NFR 50 RPS ≤5% erro | `make load-test-peak` | 4m 31s |
-| **Independence** | Isolamento de serviços | `make load-test-independence` | 3m 30s |
-| **Consistency** | Consistência eventual | `make load-test-consistency` | 3m 7s |
+| **Health** | Validar autenticação | make load-test-health | 30s |
+| **Quick** | Sanity check funcional | make load-test-quick | 34s |
+| **Peak** | NFR 50 RPS ≤5% erro | make load-test-peak | 4m 31s |
+| **Independence** | Isolamento de serviços | make load-test-independence | 3m 30s |
+| **Consistency** | Consistência eventual | make load-test-consistency | 3m 7s |
 
 #### Evidências de Teste (Resultados Reais)
 
@@ -1264,6 +1367,11 @@ Com base nos resultados dos testes, o sistema demonstra **qualidade enterprise**
 - **Background Consumer**: Processamento assíncrono com DLQ
 
 ### ADRs (Architecture Decision Records)
+
+Documentos ADR no repositório:
+- [ADR-B001: Mapeamento de Capacidades de Negócio e Bounded Contexts](docs/adrs/ADR-B001-business-capabilities-and-bounded-contexts.md)
+- [ADR-B002: Integração Assíncrona Orientada a Eventos entre Contextos](docs/adrs/ADR-B002-async-event-driven-integration.md)
+- [ADR-NFR-001: Observabilidade – SaaS vs Self-hosted](docs/adrs/ADR-NFR-001-observability-saas-vs-selfhosted.md)
 
 #### ADRs de Negócio e Solução
 
@@ -1408,6 +1516,19 @@ Savings:                 $45,300 (90% redução)
 | **System** | CPU, memory, disk, network | Node Exporter |
 | **Containers** | Container stats, resource usage | cAdvisor `:8081` |
 
+Endpoints de métricas por serviço:
+```
+TransactionsApi: /metrics
+ConsolidationsApi: /metrics
+KrakenD: /metrics
+HAProxy TX: :8181/stats
+HAProxy CO: :8282/stats
+RabbitMQ: :15692/metrics
+PgBouncer Exporter: :9127
+Node Exporter: :9100
+cAdvisor: :8081
+```
+
 ### SLOs e Alertas Implementados
 
 #### SLOs de Produção
@@ -1501,8 +1622,7 @@ container_memory_usage_bytes{name=~".*transactions.*"}
 
 ![Fluxo OAuth2/JWT](docs/diagrams/images/07-oauth-flow.png)
 
-<details>
-<summary>Ver fluxo de autenticação detalhado (clique para expandir)</summary>
+#### Fluxo de autenticação detalhado
 
 ```mermaid
 sequenceDiagram
@@ -1527,7 +1647,7 @@ sequenceDiagram
   API-->>Client: Response (via HAProxy, Gateway)
 ```
 
-</details>
+
 
 #### Configuração de Segurança
 
@@ -1600,6 +1720,11 @@ sequenceDiagram
 - **RBAC**: Role-Based Access Control mais granular
 
 ## Diretrizes de Desenvolvimento
+
+### Práticas de Log em Containers
+- Preferir saída padrão (console) para agregação centralizada de logs.
+- Evitar gravação em arquivo dentro do container, a menos que haja volume dedicado e necessidade explícita.
+- Configurar retenção e rotação no agregador externo (ex.: Loki, ELK) em vez de no container.
 
 ### Estrutura Mono-repo com Microservices
 
@@ -1869,6 +1994,11 @@ Security:     A+ (100/100) - Zero auth failures
 
 ## Solução de Problemas
 
+### Problemas Conhecidos (Estado Atual)
+- Enum em eventos: o producer publica `TransactionType` como número; o consumidor espera string (conversor configurado). Efeito: risco de falha de desserialização. Mitigação proposta: padronizar para string no publisher (ou ajustar o consumer para aceitar número).
+- Mensagens RabbitMQ não persistentes e sem publisher confirms. Efeito: risco de perda em crash imediato após publish. Mitigação proposta: `DeliveryMode=2` + publisher confirms.
+- Connection strings via PgBouncer nas APIs apontam para `Database=postgres`. Migrators usam `transactions_db`/`consolidations_db`. Efeito: risco de “tabela não encontrada”. Mitigação proposta: alinhar `Database` das APIs para o schema do serviço.
+
 ### Problemas Comuns
 
 #### Falha de Autenticação (401/403)
@@ -2009,8 +2139,7 @@ curl http://localhost:8081/containers/
 
 ![Modelo de Dados](docs/diagrams/images/02-data-model.png)
 
-<details>
-<summary>Ver modelo de dados detalhado (clique para expandir)</summary>
+#### Modelo de dados detalhado
 
 ```mermaid
 erDiagram
@@ -2038,14 +2167,13 @@ erDiagram
   TRANSACTIONS ||--o{ DAILY_CONSOLIDATION : "contribui para agregação"
 ```
 
-</details>
+
 
 ### Relacionamento e Agregação de Dados
 
 ![Relacionamento de Agregação](docs/diagrams/images/03-aggregation-relationship.png)
 
-<details>
-<summary>Ver relacionamento de dados detalhado (clique para expandir)</summary>
+#### Relacionamento de dados detalhado
 
 **Estratégia de Agregação:**
 
@@ -2075,16 +2203,20 @@ erDiagram
 - **Entre Serviços**: Consistência eventual via eventos
 - **Reconciliação**: DLQ permite correção manual de inconsistências
 
-</details>
+
 
 ### Índices e Otimizações Implementadas
 
 **Índices de Performance:**
-- **TRANSACTIONS**:
-  - `IX_Transactions_MerchantId`: Otimiza filtros por comerciante
-  - `IX_Transactions_DateTime`: Otimiza queries temporais e ordenação
-- **DAILY_CONSOLIDATION**:
-  - `UNIQUE(MerchantId, Date)`: Garante unicidade e otimiza consultas
+- TRANSACTIONS:
+```bash
+IX_Transactions_MerchantId   # Otimiza filtros por comerciante
+IX_Transactions_DateTime     # Otimiza queries temporais e ordenação
+```
+- DAILY_CONSOLIDATION:
+```bash
+UNIQUE MerchantId, Date      # Garante unicidade e otimiza consultas
+```
   - Index composto para queries eficientes
 
 **Estratégias de Otimização:**
@@ -2098,21 +2230,28 @@ erDiagram
 ## Estrutura de Arquivos
 
 ### Arquivos de Configuração
-- **Docker Compose**: `docker-compose.yml`
-- **API Gateway**: `config/krakend/krakend.json`
-- **Load Balancers**: `config/haproxy/haproxy-*.cfg`
-- **Monitoring**: `config/prometheus/*`, `config/grafana/*`
-- **Identity**: `config/keycloak/realm-export.json`
+```bash
+docker-compose.yml
+config/krakend/krakend.json
+config/haproxy/haproxy-*.cfg
+config/prometheus/*
+config/grafana/*
+config/keycloak/realm-export.json
+```
 
 ### Código-fonte
-- **Transactions API**: `src/TransactionsApi/*` (Padrão Flows)
-- **Consolidations API**: `src/ConsolidationsApi/*` (Padrão Repository)
-- **Testes k6**: `tests/k6/*`
-- **Testes Unitários**: `src/*/Tests/`
+```shell
+src/TransactionsApi/*     # Padrão Flows
+src/ConsolidationsApi/*   # Padrão Repository
+tests/k6/*                # Testes de carga k6
+src/*/Tests/              # Testes unitários .NET
+```
 
 ### Documentação
-- **Diagramas**: `docs/diagrams/*.mmd`
-- **Performance**: `docs/k6/*.txt`
+```shell
+docs/diagrams/*.mmd       # Diagramas Mermaid
+docs/k6/*.txt             # Documentos de carga k6
+```
 
 ---
 
