@@ -1,37 +1,61 @@
 graph TB
-  subgraph Users[System Users]
-    Merchant[Merchant<br/>Business owner who needs<br/>to track daily cash flow]
-    Admin[System Administrator<br/>Manages system operations<br/>and monitoring]
-    Developer[Developer<br/>Develops and maintains<br/>the system]
+  subgraph External[External Actors & Systems]
+    Merchant[👤 Merchant<br/>Comerciante que registra<br/>transações financeiras]
+    FinancialAnalyst[👤 Financial Analyst<br/>Analista que consulta<br/>relatórios consolidados]
+    Auditor[👤 Auditor<br/>Auditores internos/externos<br/>que verificam compliance]
+    LoadTester[🔧 k6 Load Tester<br/>Sistema de testes<br/>automatizados]
+
+    ExternalIdentity[🔐 External Identity Provider<br/>Keycloak - OAuth2/OIDC<br/>Gestão centralizada de identidade]
+    Monitoring[📈 External Monitoring<br/>Prometheus + Grafana<br/>Observabilidade empresarial]
   end
 
-  subgraph CashFlowSystem[Cash Flow System]
-    System[Cash Flow System<br/>Manages merchant transactions and<br/>generates daily consolidations with<br/>high availability and performance]
+  subgraph CashFlowSystem[Cash Flow System - Bounded Contexts]
+    subgraph TransactionContext[🔷 Transaction Management Context<br/>Core Domain]
+      TransactionBC[Gestão de Movimentação Financeira<br/>• Registro de transações<br/>• Validação de regras de negócio<br/>• Notificação de eventos]
+    end
+
+    subgraph ConsolidationContext[🔷 Financial Consolidation Context<br/>Supporting Domain]
+      ConsolidationBC[Consolidação de Saldos<br/>• Agregação de dados<br/>• Cálculos de saldo<br/>• Geração de relatórios]
+    end
+
+    subgraph AuditContext[🔷 Financial Audit Context<br/>Supporting Domain]
+      AuditBC[Auditoria e Compliance<br/>• Trilha de auditoria<br/>• Registros imutáveis<br/>• Relatórios de compliance]
+    end
+
+    subgraph MerchantContext[🔷 Merchant Management Context<br/>Generic Subdomain]
+      MerchantBC[Gestão de Identidade<br/>• Autenticação<br/>• Autorização<br/>• Isolamento multi-tenant]
+    end
   end
 
-  subgraph ExternalSystems[External Systems]
-    Keycloak[Keycloak Identity Provider<br/>Handles authentication and<br/>authorization using OAuth2/JWT]
-    Monitoring[Monitoring Stack<br/>Prometheus + Grafana for<br/>observability, metrics, and alerting]
-    LoadTesting[Load Testing Tools<br/>k6 for performance validation<br/>and NFR compliance]
-  end
+  %% Business Interactions
+  Merchant -->|"Registra transações<br/>para controle financeiro"| TransactionBC
+  FinancialAnalyst -->|"Consulta consolidados<br/>para acompanhar faturamento"| ConsolidationBC
+  Auditor -->|"Acessa trilhas<br/>para verificar compliance"| AuditBC
 
-  %% User interactions with main system
-  Merchant -.->|Records transactions<br/>Views consolidations<br/>HTTPS/REST| System
-  Admin -.->|Monitors system health<br/>HTTPS/Web UI| System
-  Admin -.->|Views dashboards<br/>HTTPS/Web UI| Monitoring
-  Developer -.->|Deploys and maintains<br/>CI/CD Pipeline| System
-  Developer -.->|Validates NFRs<br/>Automated tests| LoadTesting
+  LoadTester -->|"Testa performance<br/>e NFRs"| TransactionBC
+  LoadTester -->|"Valida escalabilidade"| ConsolidationBC
 
-  %% System integrations
-  System -.->|Validates JWT tokens<br/>HTTP/OAuth2| Keycloak
-  System -.->|Exposes metrics<br/>HTTP/Prometheus| Monitoring
-  LoadTesting -.->|Performance testing<br/>HTTPS/REST| System
+  %% Context Integration
+  TransactionBC -.->|"Eventos de transação"| ConsolidationBC
+  TransactionBC -.->|"Logs de auditoria"| AuditBC
+  ConsolidationBC -.->|"Registros de cálculo"| AuditBC
+
+  %% External Dependencies
+  MerchantBC -.->|"Delegação de autenticação"| ExternalIdentity
+  TransactionBC -.->|"Métricas de performance"| Monitoring
+  ConsolidationBC -.->|"Métricas de agregação"| Monitoring
+  AuditBC -.->|"Métricas de compliance"| Monitoring
 
   %% Styling
-  classDef users fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px
-  classDef system fill:#fce4ec,stroke:#c2185b,stroke-width:4px
-  classDef external fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+  classDef actor fill:#e8f4fd,stroke:#1976d2,stroke-width:2px
+  classDef context fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+  classDef external fill:#f5f5f5,stroke:#616161,stroke-width:2px
+  classDef core fill:#e8f5e8,stroke:#2e7d32,stroke-width:4px
+  classDef supporting fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+  classDef generic fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
 
-  class Merchant,Admin,Developer users
-  class System system
-  class Keycloak,Monitoring,LoadTesting external
+  class Merchant,FinancialAnalyst,Auditor,LoadTester actor
+  class ExternalIdentity,Monitoring external
+  class TransactionBC core
+  class ConsolidationBC,AuditBC supporting
+  class MerchantBC generic
