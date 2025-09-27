@@ -1,4 +1,5 @@
 graph TB
+  NoteIPs[Nota: IPs fixos são ilustrativos para documentação. Em produção, a alocação pode ser dinâmica.]
   subgraph Internet[Internet - External Access]
     Client[Client Applications<br/>Web, Mobile, k6, etc.]
   end
@@ -14,7 +15,7 @@ graph TB
   subgraph PrivateNetworks[Private Networks - NO External Access]
     subgraph KeycloakNet[keycloak_network: 172.24.0.0/24]
       Keycloak[Keycloak<br/>172.24.0.11<br/>port 8080 - LOCAL ONLY]
-      KeycloakDB[(Keycloak DB<br/>172.24.0.10)]
+      KeycloakDB[Keycloak DB<br/>172.24.0.10]
     end
 
     subgraph TxNet[transactions_network: 172.20.0.0/24]
@@ -22,7 +23,7 @@ graph TB
       TxAPI2[Transactions API #2<br/>172.20.0.31]
       HAProxyTx[HAProxy TX<br/>172.20.0.51<br/>:8181 local stats only]
       PgBouncerTx[PgBouncer TX<br/>172.20.0.15]
-      PostgresTx[(Postgres TX<br/>172.20.0.10)]
+      PostgresTx[Postgres TX<br/>172.20.0.10]
       RabbitMQTx[RabbitMQ<br/>172.20.0.20<br/>:15672 local mgmt only]
     end
 
@@ -31,7 +32,7 @@ graph TB
       CoAPI2[Consolidations API #2<br/>172.21.0.31]
       HAProxyCo[HAProxy CO<br/>172.21.0.52<br/>:8282 local stats only]
       PgBouncerCo[PgBouncer CO<br/>172.21.0.15]
-      PostgresCo[(Postgres CO<br/>172.21.0.10)]
+      PostgresCo[Postgres CO<br/>172.21.0.10]
       RabbitMQCo[RabbitMQ<br/>172.21.0.20<br/>:15692 local metrics only]
     end
   end
@@ -41,7 +42,7 @@ graph TB
   Client -.->|Read-only Monitoring| Prometheus
   Client -.->|Dashboard Access| Grafana
 
-  %% KrakenD multi-network access (SECURE)
+  %% KrakenD multi-network access - SECURE
   KrakenD -.->|keycloak_network<br/>OAuth2 validation| Keycloak
   KrakenD -.->|transactions_network<br/>API calls| HAProxyTx
   KrakenD -.->|consolidations_network<br/>API calls| HAProxyCo

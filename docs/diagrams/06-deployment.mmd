@@ -1,4 +1,5 @@
 flowchart LR
+  NoteIPs[Nota: IPs fixos são ilustrativos para documentação. Em produção, a alocação pode ser dinâmica.]
   subgraph Public[public_network - ONLY KrakenD exposed]
     G[KrakenD - Gateway<br/>:8000 public]
     P[Prometheus<br/>:9090 public]
@@ -7,7 +8,7 @@ flowchart LR
 
   subgraph Keycloak[keycloak_network - PRIVATE]
     KC[Keycloak<br/>:8080 local only]
-    KCDB[(Keycloak DB)]
+    KCDB[Keycloak DB]
   end
 
   subgraph TxNet[transactions_network - PRIVATE]
@@ -15,7 +16,7 @@ flowchart LR
     T2[Transactions API #2]
     HTX[HAProxy TX<br/>:8181 local only]
     PQT[PgBouncer TX]
-    DBT[(Postgres TX)]
+    DBT[Postgres TX]
     MQT[RabbitMQ<br/>:15672 local only]
   end
 
@@ -24,7 +25,7 @@ flowchart LR
     C2[Consolidations API #2]
     HCO[HAProxy CO<br/>:8282 local only]
     PQC[PgBouncer CO]
-    DBC[(Postgres CO)]
+    DBC[Postgres CO]
     MQC[RabbitMQ<br/>:15692 local only]
   end
 
@@ -40,7 +41,7 @@ flowchart LR
   C1 & C2 --> PQC --> DBC
   KC --> KCDB
 
-  %% RabbitMQ connections (same instance, different network IPs)
+  %% RabbitMQ connections - same instance, different network IPs
   MQT -.->|same instance| MQC
   T1 & T2 --> MQT
   C1 & C2 --> MQC

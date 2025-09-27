@@ -1,7 +1,7 @@
 erDiagram
   MERCHANT ||--o{ TRANSACTION : "realiza"
   MERCHANT ||--o{ DAILY_CONSOLIDATION : "agrega por dia"
-  TRANSACTION }o--|| DAILY_CONSOLIDATION : "contribui para (por MerchantId+Date)"
+  TRANSACTION }o--|| DAILY_CONSOLIDATION : "contribui para por MerchantId+Date"
 
   MERCHANT {
     STRING MerchantId PK

@@ -229,6 +229,7 @@ Routing Key: transaction.created
 O desenvolvimento do sistema foi iniciado com uma sessão de **Event Storming** para mapear o domínio financeiro e identificar os bounded contexts, eventos de domínio e fluxos de negócio:
 
 ![Event Storming](docs/diagrams/images/00-event-storming.png)
+Diagrama fonte: [docs/diagrams/00-event-storming.mmd](docs/diagrams/00-event-storming.mmd)
 
 #### Análise completa de Event Storming
 
@@ -412,6 +413,7 @@ Os termos identificados no Event Storming são usados consistentemente em:
 O sistema implementa uma **arquitetura de microsserviços orientada a eventos** baseada em princípios de **Domain-Driven Design (DDD)** e **Event-Driven Architecture (EDA)**. Esta abordagem foi escolhida para atender aos requisitos de alta disponibilidade, escalabilidade independente e resiliência operacional.
 
 ![Padrões Arquiteturais](docs/diagrams/images/01-architecture-patterns.png)
+Diagrama fonte: [docs/diagrams/01-architecture-patterns.mmd](docs/diagrams/01-architecture-patterns.mmd)
 
 #### Detalhes dos padrões arquiteturais
 
@@ -453,6 +455,7 @@ Cada serviço possui sua própria base **PostgreSQL** com acesso otimizado via *
 A arquitetura implementa **defesa em profundidade** através de:
 
 ![Segurança de Rede](docs/diagrams/images/05-network-security.png)
+Diagrama fonte: [docs/diagrams/05-network-security.mmd](docs/diagrams/05-network-security.mmd)
 
 #### Arquitetura de segurança detalhada
 
@@ -505,6 +508,7 @@ A arquitetura implementa **defesa em profundidade** através de:
 ### Componentes e Fluxo de Alto Nível
 
 ![Arquitetura de Componentes](docs/diagrams/images/04-components.png)
+Diagrama fonte: [docs/diagrams/04-components.mmd](docs/diagrams/04-components.mmd)
 
 #### Diagrama Mermaid
 
@@ -592,6 +596,7 @@ Notas de leitura:
 
 #### C4 Level 1 - System Context
 ![C4 System Context](docs/diagrams/images/c4-01-system-context.png)
+Diagrama fonte: [docs/diagrams/c4-01-system-context.mmd](docs/diagrams/c4-01-system-context.mmd)
 
 #### Contexto do sistema
 
@@ -608,6 +613,7 @@ O Cash Flow System atua como uma **plataforma centralizada** de processamento fi
 
 #### C4 Level 2 - Containers (Boundary do Sistema)
 ![C4 Container View](docs/diagrams/images/c4-02-container.png)
+Diagrama fonte: [docs/diagrams/c4-02-container.mmd](docs/diagrams/c4-02-container.mmd)
 
 #### Arquitetura de containers
 
@@ -626,14 +632,24 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 
 
 ## Principais Fluxos de Sequencia
-- Criação de Transação: docs/diagrams/images/08a-sequence-create-transaction.png
-- Leitura de Consolidação Diária: docs/diagrams/images/08b-sequence-read-consolidation.png
-- Consumo de Evento de Transação: docs/diagrams/images/08c-sequence-event-consumption.png
+
+Criação de Transação
+![Criação de Transação](docs/diagrams/images/08a-sequence-create-transaction.png)
+Diagrama fonte: [docs/diagrams/08a-sequence-create-transaction.mmd](docs/diagrams/08a-sequence-create-transaction.mmd)
+
+Leitura de Consolidação Diária
+![Leitura de Consolidação Diária](docs/diagrams/images/08b-sequence-read-consolidation.png)
+Diagrama fonte: [docs/diagrams/08b-sequence-read-consolidation.mmd](docs/diagrams/08b-sequence-read-consolidation.mmd)
+
+Consumo de Evento de Transação
+![Consumo de Evento de Transação](docs/diagrams/images/08c-sequence-event-consumption.png)
+Diagrama fonte: [docs/diagrams/08c-sequence-event-consumption.mmd](docs/diagrams/08c-sequence-event-consumption.mmd)
 
 #### C4 Level 3 - Component View
 
 **Transactions Service Components:**
 ![C4 Transactions Components](docs/diagrams/images/c4-03a-transactions-components.png)
+Diagrama fonte: [docs/diagrams/c4-03a-transactions-components.mmd](docs/diagrams/c4-03a-transactions-components.mmd)
 
 #### Componentes do serviço de transações
 
@@ -654,6 +670,7 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 
 **Consolidations Service Components:**
 ![C4 Consolidations Components](docs/diagrams/images/c4-03b-consolidations-components.png)
+Diagrama fonte: [docs/diagrams/c4-03b-consolidations-components.mmd](docs/diagrams/c4-03b-consolidations-components.mmd)
 
 #### Componentes do serviço de consolidações
 
@@ -675,6 +692,7 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 
 **Transactions Code Structure:**
 ![C4 Transactions Code](docs/diagrams/images/c4-04a-transactions-code.png)
+Diagrama fonte: [docs/diagrams/c4-04a-transactions-code.mmd](docs/diagrams/c4-04a-transactions-code.mmd)
 
 #### Estrutura de código - Transactions
 
@@ -692,6 +710,7 @@ Cada container comunica-se através de protocolos bem definidos (HTTP/REST, AMQP
 
 **Consolidations Code Structure:**
 ![C4 Consolidations Code](docs/diagrams/images/c4-04b-consolidations-code.png)
+Diagrama fonte: [docs/diagrams/c4-04b-consolidations-code.mmd](docs/diagrams/c4-04b-consolidations-code.mmd)
 
 #### Estrutura de código - Consolidations
 
@@ -764,6 +783,7 @@ Os diagramas de sequência mostram as **interações detalhadas** entre componen
 
 #### Dashboard de Evidências de NFR
 ![NFR Evidence Dashboard](docs/diagrams/images/13-nfr-evidence-dashboard.png)
+Diagrama fonte: [docs/diagrams/13-nfr-evidence-dashboard.mmd](docs/diagrams/13-nfr-evidence-dashboard.mmd)
 
 #### Dashboard completo de NFR
 
@@ -773,6 +793,7 @@ Consulte o diagrama interativo completo em: [13-nfr-evidence-dashboard.mmd](docs
 
 #### Performance Benchmarks
 ![Performance Benchmarks](docs/diagrams/images/14-performance-benchmarks.png)
+Diagrama fonte: [docs/diagrams/14-performance-benchmarks.mmd](docs/diagrams/14-performance-benchmarks.mmd)
 
 #### Benchmarks detalhados
 
@@ -782,6 +803,7 @@ Consulte a análise completa em: [14-performance-benchmarks.mmd](docs/diagrams/1
 
 #### Scorecard de Métricas (Nota A+)
 ![Metrics Scorecard](docs/diagrams/images/16-metrics-scorecard.png)
+Diagrama fonte: [docs/diagrams/16-metrics-scorecard.mmd](docs/diagrams/16-metrics-scorecard.mmd)
 
 #### Scorecard completo
 
@@ -828,6 +850,7 @@ sequenceDiagram
 ### Fluxo Assíncrono Completo (Eventos, Consumo e DLQ)
 
 ![Fluxo Assíncrono](docs/diagrams/images/09-async-flow.png)
+Diagrama fonte: [docs/diagrams/09-async-flow.mmd](docs/diagrams/09-async-flow.mmd)
 
 #### Fluxo assíncrono detalhado
 
@@ -886,6 +909,7 @@ flowchart LR
 ### Visão de Implantação (Redes e Segurança)
 
 ![Deployment e Redes](docs/diagrams/images/06-deployment.png)
+Diagrama fonte: [docs/diagrams/06-deployment.mmd](docs/diagrams/06-deployment.mmd)
 
 #### Topologia de rede detalhada
 
@@ -1021,6 +1045,7 @@ O sistema implementa uma **estratégia PA-EL** (Disponibilidade + Particionament
 #### Análise CAP Theorem
 
 ![Análise CAP Theorem](docs/diagrams/images/cap-theorem.png)
+Diagrama fonte: [docs/diagrams/cap-theorem.mmd](docs/diagrams/cap-theorem.mmd)
 
 #### Análise CAP detalhada
 
@@ -1031,6 +1056,7 @@ Consulte o diagrama completo em: [cap-theorem.mmd](docs/diagrams/cap-theorem.mmd
 #### Análise PACELC Theorem
 
 ![Análise PACELC Theorem](docs/diagrams/images/pacelc-theorem.png)
+Diagrama fonte: [docs/diagrams/pacelc-theorem.mmd](docs/diagrams/pacelc-theorem.mmd)
 
 #### Análise PACELC detalhada
 
@@ -1043,6 +1069,7 @@ Consulte o diagrama completo em: [pacelc-theorem.mmd](docs/diagrams/pacelc-theor
 O sistema implementa uma **stack completa de observabilidade** seguindo as melhores práticas de **Site Reliability Engineering (SRE)**:
 
 ![Arquitetura de Monitoramento](docs/diagrams/images/10-monitoring-architecture.png)
+Diagrama fonte: [docs/diagrams/10-monitoring-architecture.mmd](docs/diagrams/10-monitoring-architecture.mmd)
 
 #### Arquitetura de monitoramento detalhada
 
@@ -1081,6 +1108,7 @@ O sistema implementa uma **stack completa de observabilidade** seguindo as melho
 ### Estratégia de Testes Implementada
 
 ![Estratégia de Testes](docs/diagrams/images/11-testing-strategy.png)
+Diagrama fonte: [docs/diagrams/11-testing-strategy.mmd](docs/diagrams/11-testing-strategy.mmd)
 
 #### Estratégia de testes detalhada
 
@@ -1124,6 +1152,7 @@ make test
 ### Pipeline DevOps
 
 ![Pipeline DevOps](docs/diagrams/images/12-devops-pipeline.png)
+Diagrama fonte: [docs/diagrams/12-devops-pipeline.mmd](docs/diagrams/12-devops-pipeline.mmd)
 
 #### Pipeline DevOps detalhado
 
@@ -1621,6 +1650,7 @@ container_memory_usage_bytes{name=~".*transactions.*"}
 **3. Fluxo de Autenticação**
 
 ![Fluxo OAuth2/JWT](docs/diagrams/images/07-oauth-flow.png)
+Diagrama fonte: [docs/diagrams/07-oauth-flow.mmd](docs/diagrams/07-oauth-flow.mmd)
 
 #### Fluxo de autenticação detalhado
 
@@ -2138,6 +2168,7 @@ curl http://localhost:8081/containers/
 ### Entidades Principais
 
 ![Modelo de Dados](docs/diagrams/images/02-data-model.png)
+Diagrama fonte: [docs/diagrams/02-data-model.mmd](docs/diagrams/02-data-model.mmd)
 
 #### Modelo de dados detalhado
 
@@ -2172,6 +2203,7 @@ erDiagram
 ### Relacionamento e Agregação de Dados
 
 ![Relacionamento de Agregação](docs/diagrams/images/03-aggregation-relationship.png)
+Diagrama fonte: [docs/diagrams/03-aggregation-relationship.mmd](docs/diagrams/03-aggregation-relationship.mmd)
 
 #### Relacionamento de dados detalhado
 
@@ -2251,6 +2283,40 @@ src/*/Tests/              # Testes unitários .NET
 ```shell
 docs/diagrams/*.mmd       # Diagramas Mermaid
 docs/k6/*.txt             # Documentos de carga k6
+```
+
+## Árvore de Diagramas
+```text
+docs/
+  diagrams/
+    00-event-storming.mmd
+    01-architecture-patterns.mmd
+    02-data-model.mmd
+    03-aggregation-relationship.mmd
+    04-components.mmd
+    05-network-security.mmd
+    06-deployment.mmd
+    07-oauth-flow.mmd
+    08a-sequence-create-transaction.mmd
+    08b-sequence-read-consolidation.mmd
+    08c-sequence-event-consumption.mmd
+    09-async-flow.mmd
+    10-monitoring-architecture.mmd
+    11-testing-strategy.mmd
+    12-devops-pipeline.mmd
+    13-nfr-evidence-dashboard.mmd
+    14-performance-benchmarks.mmd
+    16-metrics-scorecard.mmd
+    cap-theorem.mmd
+    pacelc-theorem.mmd
+    c4-01-system-context.mmd
+    c4-02-container.mmd
+    c4-03a-transactions-components.mmd
+    c4-03b-consolidations-components.mmd
+    c4-04a-transactions-code.mmd
+    c4-04b-consolidations-code.mmd
+    images/
+      *.png
 ```
 
 ---

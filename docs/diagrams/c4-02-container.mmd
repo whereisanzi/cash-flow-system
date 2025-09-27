@@ -5,7 +5,7 @@ graph TB
     LoadTester[k6 Load Tester<br/>Performance validation]
   end
 
-  subgraph CashFlowDomain[Cash Flow Domain - Our Microservices Implementation]
+  subgraph CashFlowSystem[Cash Flow System - Containers - Our System Boundary]
 
     subgraph APIGateway[API Gateway Layer]
       KrakenD[KrakenD API Gateway<br/>Technology: Go<br/>Port: 8080<br/>Container Role: Entry Point<br/>Responsibilities:<br/>- Single entry point<br/>- JWT validation delegates to Keycloak<br/>- Rate limiting & CORS<br/>- Request routing to our microservices]
@@ -39,7 +39,7 @@ graph TB
 
   end
 
-  subgraph ExternalSystems[External Systems - Not Our Implementation]
+  subgraph ExternalSystems[External Systems - Outside System Boundary]
 
     subgraph IdentityManagement[Identity & Access Management]
       Keycloak[Keycloak Server<br/>Technology: Keycloak Java<br/>Port: 8080 exposed<br/>Container: keycloak<br/>EXTERNAL SYSTEM<br/>Responsibilities:<br/>- OAuth2/OIDC provider<br/>- JWT token issuing<br/>- User authentication<br/>- Multi-tenant isolation]
@@ -98,7 +98,7 @@ graph TB
   Prometheus -.->|"Scrapes infrastructure metrics"| KrakenD & TxHAProxy & CoHAProxy
   Grafana --> Prometheus
 
-  %% Styling for C4 Level 2 - Container View (Real Implementation)
+  %% Styling for C4 Level 2 - Container View - Real Implementation
   classDef user fill:#e8f4fd,stroke:#1976d2,stroke-width:2px
   classDef gateway fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
   classDef ourMicroservice fill:#e8f5e8,stroke:#2e7d32,stroke-width:3px

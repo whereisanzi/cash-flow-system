@@ -39,17 +39,17 @@ graph TB
 
   subgraph DataLayer[Data & Persistence Layer]
     subgraph TxData[Transactions Data]
-      TxDB[(PostgreSQL<br/>Transactions DB<br/>Dapper Access)]
+      TxDB[PostgreSQL<br/>Transactions DB<br/>Dapper Access]
       TxPool[PgBouncer<br/>Connection Pooling<br/>Performance Optimization]
     end
 
     subgraph CoData[Consolidations Data]
-      CoDB[(PostgreSQL<br/>Consolidations DB<br/>EF Core Access)]
+      CoDB[PostgreSQL<br/>Consolidations DB<br/>EF Core Access]
       CoPool[PgBouncer<br/>Connection Pooling<br/>Performance Optimization]
     end
 
     subgraph AuthData[Auth Data]
-      AuthDB[(PostgreSQL<br/>Keycloak DB<br/>User & Token Storage)]
+      AuthDB[PostgreSQL<br/>Keycloak DB<br/>User & Token Storage]
     end
   end
 

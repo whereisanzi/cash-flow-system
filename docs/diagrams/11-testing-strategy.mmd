@@ -3,7 +3,7 @@ graph TB
     subgraph UnitTests[Unit Tests Layer - FAST & ISOLATED]
       TxUnitTests[TransactionsApi.Tests<br/>• TransactionAdapterTests<br/>• TransactionFlowTests<br/>• TransactionLogicTests<br/>✅ Complete orchestration coverage]
 
-      CoUnitTests[ConsolidationsApi.Tests<br/>• ConsolidationServiceTests<br/>• Background consumer tests<br/>✅ Domain logic validation]
+      CoUnitTests[ConsolidationsApi.Tests<br/>• ConsolidationServiceTests<br/>• Service-level tests<br/>✅ Domain logic validation]
 
       UnitCoverage[Coverage Focus<br/>• Business Logic: 100%<br/>• Flows & Orchestration<br/>• Error Scenarios<br/>• Edge Cases]
     end

@@ -1,22 +1,22 @@
 sequenceDiagram
   autonumber
   participant Client
-  participant G as KrakenD (Gateway)
+  participant G as KrakenD Gateway
   participant KC as Keycloak
-  participant HTX as HAProxy (TX)
-  participant HCO as HAProxy (CO)
+  participant HTX as HAProxy TX
+  participant HCO as HAProxy CO
   participant TX as Transactions API
   participant CO as Consolidations API
 
-  Note over Client,G: Autenticação (ROPC em ambiente de laboratório)
-  Client->>G: POST /api/v1/auth/token (client_id, username, password)
+  Note over Client,G: Autenticação - ROPC em ambiente de laboratório
+  Client->>G: POST /api/v1/auth/token - client_id, username, password
   G->>KC: /realms/cash-flow/protocol/openid-connect/token
-  KC-->>G: access_token (JWT)
+  KC-->>G: access_token JWT
   G-->>Client: access_token
 
   Note over Client,G: Chamada autenticada
   Client->>G: Authorization: Bearer <JWT>
-  G->>G: Valida JWT (RS256, JWK do Keycloak)
+  G->>G: Valida JWT - RS256, JWK do Keycloak
   alt Transactions endpoint
     G->>HTX: encaminha requisição
     HTX->>TX: /api/v1/merchants/{id}/transactions

@@ -82,9 +82,9 @@ graph TB
   SLORules -.->|Calculate| SLOMetrics
 
   %% Example queries annotations
-  Availability -.->|PromQL Example| AvailabilityQuery["avg_over_time(up{job='transactions-api'}[5m])"]
-  ErrorRate -.->|PromQL Example| ErrorQuery["rate(http_requests_total{status=~'5..'}[5m]) / rate(http_requests_total[5m])"]
-  Latency -.->|PromQL Example| LatencyQuery["histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))"]
+  Availability -.->|PromQL Example| AvailabilityQuery["avg_over_time up{job='transactions-api'} 5m"]
+  ErrorRate -.->|PromQL Example| ErrorQuery["rate http_requests_total{status=~'5..'} 5m / rate http_requests_total 5m"]
+  Latency -.->|PromQL Example| LatencyQuery["histogram_quantile 0.99 , rate http_request_duration_seconds_bucket 5m"]
 
   %% Styling
   classDef app fill:#e8f5e8,stroke:#2e7d32,stroke-width:2px

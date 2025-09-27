@@ -14,11 +14,11 @@ graph TB
 
   end
 
-  subgraph ExternalSystems[External Systems - Not Our Bounded Contexts]
+  subgraph ExternalSystems[External Bounded Contexts]
 
-    IdentityProvider[Keycloak Identity Provider<br/>EXTERNAL SYSTEM<br/>- OAuth2/OIDC authentication<br/>- JWT token management<br/>- User and role management<br/>- Multi-tenant support]
+    IdentityProvider[Identity Context - Keycloak<br/>EXTERNAL CONTEXT<br/>- OAuth2/OIDC authentication<br/>- JWT token management<br/>- User and role management<br/>- Tenant isolation]
 
-    MonitoringStack[Observability Stack<br/>EXTERNAL TOOLS<br/>- Prometheus: Metrics collection<br/>- Grafana: Dashboards and alerting<br/>- System health monitoring<br/>- Performance metrics]
+    MonitoringStack[Monitoring Context - Prometheus e Grafana<br/>EXTERNAL CONTEXT<br/>- Metrics collection and storage<br/>- Dashboards and alerting<br/>- System health and performance]
 
     MessageBroker[RabbitMQ Message Broker<br/>EXTERNAL INFRASTRUCTURE<br/>- Event-driven integration<br/>- Async message delivery<br/>- Dead letter queue support<br/>- Message persistence]
 
@@ -32,7 +32,7 @@ graph TB
   LoadTester -->|"Load testing<br/>Testa escalabilidade"| ConsolidationContext
 
   %% Domain Integration - DDD Context Mapping
-  TransactionContext -.->|"Domain Events<br/>(TransactionCreated)<br/>Async via RabbitMQ"| ConsolidationContext
+  TransactionContext -.->|"Domain Events<br/>TransactionCreated<br/>Async via RabbitMQ"| ConsolidationContext
 
   %% External Dependencies - Our Domain to External Systems
   TransactionContext -.->|"Publishes events<br/>Event-driven integration"| MessageBroker
@@ -44,7 +44,7 @@ graph TB
   TransactionContext -.->|"Metrics publishing<br/>/metrics endpoint"| MonitoringStack
   ConsolidationContext -.->|"Metrics publishing<br/>/metrics endpoint"| MonitoringStack
 
-  %% Styling for C4 Level 1 - System Context (Real Architecture)
+  %% Styling for C4 Level 1 - System Context - Real Architecture
   classDef actor fill:#e8f4fd,stroke:#1976d2,stroke-width:2px
   classDef coreContext fill:#e8f5e8,stroke:#2e7d32,stroke-width:4px
   classDef supportingContext fill:#e3f2fd,stroke:#1976d2,stroke-width:3px

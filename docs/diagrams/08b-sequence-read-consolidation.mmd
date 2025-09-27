@@ -2,7 +2,7 @@ sequenceDiagram
   autonumber
   participant Client
   participant Gateway as KrakenD
-  participant LB as HAProxy (CO)
+  participant LB as HAProxy CO
   participant Controller as ConsolidationController
   participant Service as ConsolidationService
   participant Repository as DailyConsolidationRepository
@@ -10,19 +10,19 @@ sequenceDiagram
   participant DB as PgBouncer/PostgreSQL
 
   Note over Client,Gateway: Cliente solicita consolidação diária
-  Client->>Gateway: GET /api/v1/merchants/{id}/consolidations/daily?date=2025-09-24 (JWT)
-  Gateway->>Gateway: Valida JWT (RS256, JWK do Keycloak)
+  Client->>Gateway: GET /api/v1/merchants/{id}/consolidations/daily?date=2025-09-24 - JWT
+  Gateway->>Gateway: Valida JWT - RS256, JWK do Keycloak
 
   Note over Gateway,LB: Roteamento para Consolidations API
   Gateway->>LB: encaminha requisição autenticada
   LB->>Controller: HTTP GET request
 
   Note over Controller,Service: Processamento da consulta
-  Controller->>Controller: Valida parâmetros (merchantId, date)
-  Controller->>Service: GetDailyConsolidationAsync(merchantId, date)
+  Controller->>Controller: Valida parâmetros - merchantId, date
+  Controller->>Service: GetDailyConsolidationAsync merchantId, date
 
   Note over Service,Repository: Camada de domínio e persistência
-  Service->>Repository: GetByMerchantAndDateAsync(merchantId, date)
+  Service->>Repository: GetByMerchantAndDateAsync merchantId, date
   Repository->>Context: FindAsync usando LINQ
   Context->>DB: SELECT query com filtros
 
@@ -58,4 +58,4 @@ sequenceDiagram
   end
 
   Note over Client,DB: Fluxo de leitura otimizado
-  Note right of DB: • Índice único (MerchantId, Date)<br/>• PgBouncer para pool de conexões<br/>• EF Core com tracking desabilitado<br/>• Cache potencial em níveis superiores
+  Note right of DB: • Índice único MerchantId e Date<br/>• PgBouncer para pool de conexões<br/>• EF Core com tracking desabilitado<br/>• Cache potencial em níveis superiores

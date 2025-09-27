@@ -11,7 +11,7 @@ flowchart LR
 
   subgraph NetKeycloak[keycloak_network - PRIVATE]
     KC[Keycloak]
-    KCDB[(Keycloak DB)]
+    KCDB[Keycloak DB]
   end
 
   subgraph NetTx[transactions_network - PRIVATE]
@@ -19,7 +19,7 @@ flowchart LR
     T2[Transactions API #2]
     HTX[HAProxy - Transactions<br/>PRIVATE access only]
     PQT[PgBouncer - Transactions]
-    DBT[(Postgres - transactions)]
+    DBT[Postgres - transactions]
     MQTx[RabbitMQ<br/>IP: 172.20.0.20]
   end
 
@@ -28,14 +28,14 @@ flowchart LR
     C2[Consolidations API #2]
     HCO[HAProxy - Consolidations<br/>PRIVATE access only]
     PQC[PgBouncer - Consolidations]
-    DBC[(Postgres - consolidations)]
+    DBC[Postgres - consolidations]
     MQCo[RabbitMQ<br/>IP: 172.21.0.20]
   end
 
   subgraph MQ[RabbitMQ Logical View]
-    EX[(Exchange: cash-flow-exchange)]
+    EX[Exchange: cash-flow-exchange]
     Q[Queue: consolidations-queue]
-    DLX[(DLX: cash-flow-dlx)]
+    DLX[DLX: cash-flow-dlx]
     DLQ[DLQ: consolidations-queue-dlq]
   end
 
@@ -51,7 +51,7 @@ flowchart LR
   T1 & T2 -->|Dapper via IDatabaseProtocol| PQT --> DBT
   C1 & C2 -->|EF Core Repository| PQC --> DBC
 
-  %% Message flow (same RabbitMQ instance, different network access)
+  %% Message flow - same RabbitMQ instance, different network access
   MQTx -.->|same instance| MQCo
   MQTx -.-> EX
   MQCo -.-> Q
@@ -63,8 +63,8 @@ flowchart LR
   subgraph Observability[Observability Stack - PUBLIC]
     P[Prometheus<br/>:9090]
     Gr[Grafana<br/>:3000]
-    HA1[(HAProxy Stats TX<br/>:8181 local)]
-    HA2[(HAProxy Stats CO<br/>:8282 local)]
+    HA1[HAProxy Stats TX<br/>:8181 local]
+    HA2[HAProxy Stats CO<br/>:8282 local]
     cAdv[cAdvisor<br/>:8081]
     nExp[Node Exporter<br/>:9100]
     pgbExpT[PgBouncer Exporter TX]

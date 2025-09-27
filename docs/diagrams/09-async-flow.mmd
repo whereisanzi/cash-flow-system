@@ -16,9 +16,9 @@ flowchart LR
   end
 
   subgraph MQ[RabbitMQ Logical Structure - PRIVATE]
-    EX[(Exchange: cash-flow-exchange<br/>type: topic)]
+    EX[Exchange: cash-flow-exchange<br/>type: topic]
     Q[Queue: consolidations-queue<br/>routing: transaction.created]
-    DLX[(DLX: cash-flow-dlx<br/>Dead Letter Exchange)]
+    DLX[DLX: cash-flow-dlx<br/>Dead Letter Exchange]
     DLQ[DLQ: consolidations-queue-dlq<br/>Failed Messages Storage]
   end
 

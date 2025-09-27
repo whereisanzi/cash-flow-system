@@ -2,7 +2,7 @@ sequenceDiagram
   autonumber
   participant Client
   participant Gateway as KrakenD
-  participant LB as HAProxy (TX)
+  participant LB as HAProxy TX
   participant Handler as TransactionHandler
   participant Flow as TransactionFlow
   participant Logic as TransactionLogic
@@ -14,19 +14,19 @@ sequenceDiagram
 
   Note over Client,Gateway: Autenticação e roteamento
   Client->>Gateway: POST /api/v1/merchants/{merchantId}/transactions<br/>Authorization: Bearer <JWT><br/>Body: {type, amount, description}
-  Gateway->>Gateway: Valida JWT (RS256, JWK do Keycloak)
+  Gateway->>Gateway: Valida JWT - RS256, JWK do Keycloak
   Gateway->>LB: Encaminha para Transactions network<br/>haproxy-transactions:8080
 
   Note over LB,Handler: Load balancing e entrada na API
   LB->>Handler: Distribui para instância disponível<br/>transactions-api-1:5001 ou transactions-api-2:5001
   Handler->>Handler: Valida parâmetros da requisição
 
-  Note over Handler,Flow: Orquestração do caso de uso (Flows Pattern)
-  Handler->>Flow: CreateTransactionAsync(merchantId, request)
+  Note over Handler,Flow: Orquestração do caso de uso - Flows Pattern
+  Handler->>Flow: CreateTransactionAsync merchantId, request
 
   Note over Flow,Logic: Validação de domínio
-  Flow->>Logic: ValidateRequest(request)
-  Logic-->>Flow: ValidationResult (amount, description, type)
+  Flow->>Logic: ValidateRequest request
+  Logic-->>Flow: ValidationResult - amount, description, type
 
   alt Validação falhou
     Flow-->>Handler: ValidationException
@@ -35,15 +35,15 @@ sequenceDiagram
     Gateway-->>Client: 400 Bad Request + validation errors
   else Validação passou
     Note over Flow,Adapter: Mapeamento DTO → Domain
-    Flow->>Adapter: ToCore(request, merchantId)
+    Flow->>Adapter: ToCore request, merchantId
     Adapter-->>Flow: Transaction domain object
 
-    Flow->>Logic: ValidateAndEnrich(transaction)
+    Flow->>Logic: ValidateAndEnrich transaction
     Logic->>Logic: Adiciona CreatedAt, Id, etc.
     Logic-->>Flow: Transaction enriquecida
 
     Note over Flow,DB: Persistência com Dapper
-    Flow->>DB: SaveTransactionAsync(transaction)
+    Flow->>DB: SaveTransactionAsync transaction
     DB->>PgBouncer: SQL INSERT via connection pool
     PgBouncer->>PostgresDB: Execute SQL transaction
     PostgresDB-->>PgBouncer: Transaction committed
@@ -51,14 +51,14 @@ sequenceDiagram
     DB-->>Flow: Persisted Transaction
 
     Note over Flow,MQ: Publicação de evento assíncrono
-    Flow->>Adapter: ToEvent(transaction)
+    Flow->>Adapter: ToEvent transaction
     Adapter-->>Flow: TransactionCreatedEvent
-    Flow->>MQ: PublishTransactionCreatedAsync(event)
+    Flow->>MQ: PublishTransactionCreatedAsync event
     MQ->>MQ: Publish to 'cash-flow-exchange'<br/>routing key: 'transaction.created'
-    MQ-->>Flow: Publish acknowledged
+    MQ-->>Flow: Publish - sem publisher confirms
 
     Note over Flow,Handler: Resposta de sucesso
-    Flow->>Adapter: ToResponse(transaction)
+    Flow->>Adapter: ToResponse transaction
     Adapter-->>Flow: TransactionResponse
     Flow-->>Handler: TransactionResponse
     Handler-->>LB: 201 Created + transaction data
@@ -67,5 +67,5 @@ sequenceDiagram
   end
 
   Note over Client,MQ: Características do fluxo
-  Note right of DB: • Transação ACID garantida<br/>• Pool de conexões otimizado<br/>• Retry em falhas temporárias
-  Note right of MQ: • Fire-and-forget pattern<br/>• Eventual consistency<br/>• Fault tolerance com DLQ
+  Note right of DB: • Transação ACID garantida<br/>• Pool de conexões otimizado<br/>• Retry planejado para falhas temporárias
+  Note right of MQ: • Fire-and-forget pattern<br/>• Eventual consistency<br/>• DLQ configurada - sem publisher confirms
